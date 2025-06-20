@@ -36,12 +36,12 @@
 1. **リポジトリをクローン**
 
 ```bash
-git clone https://github.com/your-repo/gakuseiBOT_v2.git
+git clone https://github.com/akiy2009/gakuseiBOT_v2.git
 cd gakuseiBOT_v2
 ```
 
 ※ 本プロジェクトはベータ版のため、不具合が生じる可能性があります。ご了承ください。  
 
 連絡先・サポート
-公式サイト: https://gakuseibot.com
+公式サイト: https://gakuseibot.com  
 メール: akiy2009_dev@outlook.jp
