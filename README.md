@@ -42,6 +42,6 @@ cd gakuseiBOT_v2
 
 ※ 本プロジェクトはベータ版のため、不具合が生じる可能性があります。ご了承ください。  
 
-連絡先・サポート
+連絡先・サポート  
 公式サイト: https://gakuseibot.com  
 メール: akiy2009_dev@outlook.jp
