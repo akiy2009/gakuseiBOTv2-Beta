@@ -47,7 +47,7 @@ We will investigate and respond as quickly as possible. Please keep the issue co
 
 ## 連絡先 / Contact
 
-- 📧 `security@yourproject.org`
+- `akiy2009_dev@outlook.jp`
 - またはコアチームメンバーへの直接連絡
 
 ---
