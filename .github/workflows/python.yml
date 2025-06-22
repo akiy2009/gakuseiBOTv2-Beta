@@ -26,3 +26,10 @@ jobs:
       - name: main.py の実行
         run: |
           python main.py
+          
+      - name: 成功を Issues に通知
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment 1 --body "main.py の実行が成功しました。（$(date +'%Y-%m-%d %H:%M:%S')）"          
