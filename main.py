@@ -13,8 +13,8 @@ import io
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-
-bot = commands.Bot(command_prefix=config.PREFIX, intents=intents)
+PREFIX = os.getenv("PREFIX")
+bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
 HEAVY_THRESHOLD = 1.5  # 秒
 HEAVY_COGS_PATH = Path("./data/heavy_cogs.json")
