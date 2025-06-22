@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 import time
-import discord
 from discord.ext import commands, tasks
 import os
 import config
@@ -14,14 +13,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import io
-import discord
-from discord.ext import commands
-import json
-import os
 import matplotlib.pyplot as plt
 import io
-  import discord
-from discord.ext import commands
-from discord import app_commands
 from discord.ui import Modal, TextInput
 from discord.ui import View, Select
