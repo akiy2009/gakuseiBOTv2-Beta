@@ -32,4 +32,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue comment 1 --body "main.py の実行が成功しました。（$(date +'%Y-%m-%d %H:%M:%S')）"          
+          gh issue create --title "main.py 実行成功" \
+                          --body "Houston の main.py の実行が成功しました。（$(date +'%Y-%m-%d %H:%M:%S')）"        
