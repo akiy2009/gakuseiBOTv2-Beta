@@ -143,4 +143,5 @@ def start_watching(loop):
 if __name__ == "__main__":
     if not HEAVY_COGS_PATH.parent.exists():
         os.makedirs(HEAVY_COGS_PATH.parent)
-    bot.run(config.TOKEN)
+    TOKEN = os.getenv("DISCORD_TOKEN")
+    bot.run(TOKEN) if TOKEN else print("DISCORD_TOKEN is not set in environment variables.")
