@@ -1,3 +1,4 @@
 # 環境変数ファイルを除外
 .env
 TOKEN.env
+ADMIN.env
