@@ -9,6 +9,9 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import io
+from dotenv import load_dotenv
+
+dotenv_result = load_dotenv('TOKEN.env')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +21,7 @@ bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
 HEAVY_THRESHOLD = 1.5  # 秒
 HEAVY_COGS_PATH = Path("./data/heavy_cogs.json")
-REPORT_CHANNEL_ID = 1291296590950301753  # ログ送信チャンネルID
+REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID", "0"))  # ログ送信チャンネルID
 
 status_list = [
     discord.Game("動作中..."),

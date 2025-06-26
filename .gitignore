@@ -2,3 +2,5 @@
 .env
 TOKEN.env
 ADMIN.env
+.venv/
+__pycache__/
