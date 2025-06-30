@@ -36,7 +36,7 @@
 1. **リポジトリをクローン**
 
 ```bash
-git clone https://github.com/akiy2009/gakuseiBOT_v2.git
+git clone https://github.com/akiy2009/gakuseiBOTv2-Beta.git
 cd gakuseiBOT_v2
 ```
 
