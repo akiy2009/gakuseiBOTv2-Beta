@@ -42,6 +42,7 @@ class ReportModal(Modal):
             await interaction.response.send_message("✅ 通報が送信されました。ご協力ありがとうございます。", ephemeral=True)
         else:
             await interaction.response.send_message("❌ 通報チャンネルが見つかりませんでした。", ephemeral=True)
+            
 
 
 class ReportCog(commands.Cog):
