@@ -46,6 +46,34 @@ class RoleSelect(discord.ui.Select):
             msg = "変更はありませんでした。"
 
         await interaction.response.send_message(msg, ephemeral=True)
+    
+class PanelRole(discord.ui.Select):
+    def __init__(self, roles: list[discord.Role], description: str):
+        self.roles = roles
+        self.description = description
+        options = [
+            discord.SelectOption(label=role.name, value=str(role.id))
+            for role in roles
+        ]
+        if not options:
+            options = [discord.SelectOption(label="利用可能なロールがありません", value="none", default=True, description="サーバーに選択可能なロールがありません")]
+        super().__init__(
+            placeholder="ロールを選択してください", 
+            options=options, 
+            max_values=min(15, len(options)), 
+            min_values=1 if len(options) > 1 else 0
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        all_roles = self.roles
+        
+        view = discord.ui.View()
+        view.add_item(RoleSelect(all_roles))
+        
+        await interaction.channel.send(content="ロールを選択してください。" if not self.description else self.description, view=view)
+    
+        await interaction.response.edit_message(content="✅ ロール選択パネルを作成しました。", view=None)
+
 
 class RoleSelectView(discord.ui.View):
     def __init__(self, role_dict: dict[str, discord.Role]):
@@ -58,44 +86,16 @@ class RolePanelCog(commands.Cog):
         self.bot = bot
         self.views_to_register = []
 
-    @app_commands.command(name="createpanel", description="ロール選択パネルを作成します")
-    @app_commands.describe(
-        description="パネルの説明文（省略可）",
-        roles="選択可能にするロール（最大15個）"
-    )
-    async def createpanel(
-        self,
-        interaction: discord.Interaction,
-        description: str = "以下のメニューからロールを選択してください。",
-        roles: list[discord.Role] = []
-    ):
-        if not roles:
-            await interaction.response.send_message("⚠️ ロールを1つ以上指定してください。", ephemeral=True)
-            return
 
-        if len(roles) > 15:
-            await interaction.response.send_message("⚠️ 最大15個までロールを指定できます。", ephemeral=True)
-            return
+    ### Protips: discord APIでは、コマンドで複数選択といったようなことはできません。
+    
+    @app_commands.command(name = "rolepanel", description = "ロール選択パネルを作成します。")
+    async def createpanel(self, interaction: discord.Interaction, description: str = "以下のメニューからロールを選択してください。"):
+        view = discord.ui.View()
+        roles = [role for role in interaction.guild.roles if not role.is_bot_managed() and not role.is_default() and not role.is_integration() and not role.is_premium_subscriber()]
+        view.add_item(PanelRole(roles, description))
+        await interaction.response.send_message("追加するロールを選択してください。", view=view, ephemeral=True)
 
-        role_dict = {role.name: role for role in roles}
-        embed = discord.Embed(
-            title="🎭 ロール選択パネル",
-            description=description,
-            color=discord.Color.blurple()
-        )
-
-        view = RoleSelectView(role_dict)
-        self.bot.add_view(view)  # 再起動後も動作するよう登録
-        await interaction.response.send_message(embed=embed, view=view)
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("[RolePanelCog] コグ読み込み完了・スラッシュコマンド同期を試みます")
-        try:
-            synced = await self.bot.tree.sync()
-            print(f"✅ スラッシュコマンド {len(synced)} 件同期しました。")
-        except Exception as e:
-            print(f"❌ スラッシュコマンド同期失敗: {e}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(RolePanelCog(bot))
