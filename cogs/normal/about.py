@@ -7,7 +7,7 @@ class About(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="about", description="Botの説明を表示します")
-    async def serverinfo(self, interaction: discord.Interaction):
+    async def about(self, interaction: discord.Interaction):
 
         embed = discord.Embed(
             title="About gakuseiBOT",

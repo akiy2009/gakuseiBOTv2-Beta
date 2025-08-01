@@ -7,7 +7,7 @@ class BOTInfo(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="botinfo", description="Botの導入サーバー数とユーザー数を表示します")
-    async def serverinfo(self, interaction: discord.Interaction):
+    async def bot(self, interaction: discord.Interaction):
         guild_count = len(self.bot.guilds)
         user_count = sum(guild.member_count for guild in self.bot.guilds)
 
