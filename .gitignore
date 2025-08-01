@@ -2,3 +2,4 @@
 .env
 TOKEN.env
 ADMIN.env
+.venv/
