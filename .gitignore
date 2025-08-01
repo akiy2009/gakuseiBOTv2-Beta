@@ -1,6 +1,5 @@
 # 環境変数ファイルを除外
 .env
-TOKEN.env
-ADMIN.env
 
+.venv/
 __pycache__/
