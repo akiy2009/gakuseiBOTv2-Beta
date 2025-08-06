@@ -1,16 +1,16 @@
-name: Python Quality CI with Auto PR & Issue Reporting
+name: Python Quality CI - Robust with Auto PR & Issue
 
 on:
   push:
     branches: [main]
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
-      - '.github/workflows/quality-checks.yml'
+      - 'cogs/**'
+      - 'tests/**'
+      - '.github/workflows/**'
   pull_request:
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
+      - 'cogs/**'
+      - 'tests/**'
 
 permissions:
   contents: write
@@ -37,66 +37,101 @@ jobs:
           pip install -r requirements.txt || true
           pip install black ruff mypy flake8 pytest coverage pip-audit
 
-      - name: Run ruff check (allow failures, save output)
-        id: ruff_check
+      # --- Check folder existence ---
+      - name: Check if cogs folder exists
+        id: check_cogs
         run: |
-          ruff check cogs tests > ruff_output.txt || true
-          cat ruff_output.txt
-
-      - name: Run mypy (allow failures, save output)
-        id: mypy_check
-        run: |
-          mypy cogs > mypy_output.txt || true
-          cat mypy_output.txt
-
-      - name: Run pip-audit (allow failures, save output)
-        id: pip_audit
-        run: |
-          pip-audit > audit_output.txt || true
-          cat audit_output.txt
-
-      - name: Check if test files exist
-        id: testfiles
-        run: |
-          if ls tests/test_*.py tests/*_test.py 1> /dev/null 2>&1; then
-            echo "TESTS_FOUND=true" >> $GITHUB_ENV
+          if [ -d cogs ]; then
+            echo "COGS_EXISTS=true" >> $GITHUB_ENV
           else
-            echo "TESTS_FOUND=false" >> $GITHUB_ENV
+            echo "COGS_EXISTS=false" >> $GITHUB_ENV
           fi
 
-      - name: Run tests with coverage (only if test files found)
-        if: env.TESTS_FOUND == 'true'
+      - name: Check if tests folder exists
+        id: check_tests
+        run: |
+          if [ -d tests ]; then
+            echo "TESTS_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "TESTS_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      # --- Ruff lint on cogs and tests if exist ---
+      - name: Ruff lint on cogs
+        if: env.COGS_EXISTS == 'true'
+        id: ruff_cogs
+        run: |
+          ruff check cogs > ruff_cogs.txt || true
+          cat ruff_cogs.txt
+
+      - name: Ruff lint on tests
+        if: env.TESTS_EXISTS == 'true'
+        id: ruff_tests
+        run: |
+          ruff check tests > ruff_tests.txt || true
+          cat ruff_tests.txt
+
+      # --- Mypy type check on cogs and tests if exist ---
+      - name: Mypy type check on cogs
+        if: env.COGS_EXISTS == 'true'
+        id: mypy_cogs
+        run: |
+          mypy cogs > mypy_cogs.txt || true
+          cat mypy_cogs.txt
+
+      - name: Mypy type check on tests
+        if: env.TESTS_EXISTS == 'true'
+        id: mypy_tests
+        run: |
+          mypy tests > mypy_tests.txt || true
+          cat mypy_tests.txt
+
+      # --- Security audit ---
+      - name: Security audit with pip-audit
+        id: pip_audit
+        run: |
+          pip-audit > audit.txt || true
+          cat audit.txt
+
+      # --- Run tests with coverage if tests folder exists ---
+      - name: Run tests with coverage
+        if: env.TESTS_EXISTS == 'true'
         run: |
           coverage run -m pytest tests/
           coverage report
           coverage xml
 
       - name: Skip tests notice
-        if: env.TESTS_FOUND == 'false'
-        run: echo "No test files found, skipping tests."
+        if: env.TESTS_EXISTS == 'false'
+        run: echo "No tests folder found, skipping tests."
 
-      - name: Save error flags for next jobs
+      # --- Save error flags to env ---
+      - name: Parse lint errors flags
         run: |
-          if grep -qE "error|F401|F541" ruff_output.txt; then
+          if [ -f ruff_cogs.txt ] && grep -qE "error|F401|F541" ruff_cogs.txt; then
+            echo "RUFF_ERRORS=true" >> $GITHUB_ENV
+          elif [ -f ruff_tests.txt ] && grep -qE "error|F401|F541" ruff_tests.txt; then
             echo "RUFF_ERRORS=true" >> $GITHUB_ENV
           else
             echo "RUFF_ERRORS=false" >> $GITHUB_ENV
           fi
 
-          if grep -q "error:" mypy_output.txt; then
+          if [ -f mypy_cogs.txt ] && grep -q "error:" mypy_cogs.txt; then
+            echo "MYPY_ERRORS=true" >> $GITHUB_ENV
+          elif [ -f mypy_tests.txt ] && grep -q "error:" mypy_tests.txt; then
             echo "MYPY_ERRORS=true" >> $GITHUB_ENV
           else
             echo "MYPY_ERRORS=false" >> $GITHUB_ENV
           fi
 
-          if grep -q "No known vulnerabilities found" audit_output.txt; then
+          if grep -q "No known vulnerabilities found" audit.txt; then
             echo "AUDIT_ISSUES=false" >> $GITHUB_ENV
           else
             echo "AUDIT_ISSUES=true" >> $GITHUB_ENV
           fi
 
   auto-fix-pr:
-    name: Auto Fix and PR Creation
+    name: Auto Format and PR Creation
     runs-on: ubuntu-latest
     needs: quality-check
     if: github.ref == 'refs/heads/main'
@@ -113,11 +148,21 @@ jobs:
       - name: Install formatting tools
         run: pip install black ruff
 
-      - name: Apply black formatter
-        run: black cogs tests
+      - name: Run black formatter on cogs if exists
+        if: env.COGS_EXISTS == 'true'
+        run: black cogs
 
-      - name: Apply ruff auto-fixes
-        run: ruff cogs tests --fix
+      - name: Run black formatter on tests if exists
+        if: env.TESTS_EXISTS == 'true'
+        run: black tests
+
+      - name: Run ruff autofix on cogs if exists
+        if: env.COGS_EXISTS == 'true'
+        run: ruff cogs --fix
+
+      - name: Run ruff autofix on tests if exists
+        if: env.TESTS_EXISTS == 'true'
+        run: ruff tests --fix
 
       - name: Check for changes
         id: check_changes
@@ -145,7 +190,7 @@ jobs:
           delete-branch: true
 
   issue-report:
-    name: Create Issues for Remaining Errors
+    name: Create Issues for Remaining Errors or Skipped Steps
     runs-on: ubuntu-latest
     needs: quality-check
     if: github.ref == 'refs/heads/main'
@@ -156,7 +201,7 @@ jobs:
         uses: peter-evans/create-issue-from-file@v4
         with:
           title: '[Lint Error] Ruff detected code issues'
-          content-filepath: ruff_output.txt
+          content-filepath: ruff_cogs.txt
           labels: lint, ruff
           assignees: akiy2009
 
@@ -165,15 +210,37 @@ jobs:
         uses: peter-evans/create-issue-from-file@v4
         with:
           title: '[Type Error] Mypy detected typing issues'
-          content-filepath: mypy_output.txt
+          content-filepath: mypy_cogs.txt
           labels: type-check, mypy
-          assignees: akiy2009
+          assignees: your-github-username
 
       - name: Create Security Audit Issue
         if: env.AUDIT_ISSUES == 'true'
         uses: peter-evans/create-issue-from-file@v4
         with:
           title: '[Security] Vulnerabilities detected by pip-audit'
-          content-filepath: audit_output.txt
+          content-filepath: audit.txt
           labels: security, audit
+          assignees: akiy2009
+
+      - name: Create Issue for Missing cogs Folder
+        if: env.COGS_EXISTS == 'false'
+        uses: peter-evans/create-issue@v3
+        with:
+          title: '[Info] cogs フォルダが見つかりませんでした'
+          body: |
+            このリポジトリには `cogs` フォルダが存在しなかったため、
+            Lint・型チェック・自動整形処理はスキップされました。
+          labels: info
+          assignees: akiy2009
+
+      - name: Create Issue for Missing tests Folder
+        if: env.TESTS_EXISTS == 'false'
+        uses: peter-evans/create-issue@v3
+        with:
+          title: '[Info] tests フォルダが見つかりませんでした'
+          body: |
+            このリポジトリには `tests` フォルダが存在しなかったため、
+            テスト実行およびカバレッジ計測処理はスキップされました。
+          labels: info
           assignees: akiy2009
