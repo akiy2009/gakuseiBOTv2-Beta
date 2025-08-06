@@ -1,4 +1,4 @@
-name: Python Quality CI with Auto PR Fix
+name: Python Quality CI with Auto PR & Issue Reporting
 
 on:
   push:
@@ -37,15 +37,23 @@ jobs:
           pip install -r requirements.txt || true
           pip install black ruff mypy flake8 pytest coverage pip-audit
 
-      - name: Run ruff check (allow failures)
+      - name: Run ruff check (allow failures, save output)
+        id: ruff_check
         run: |
-          ruff check cogs tests || true
+          ruff check cogs tests > ruff_output.txt || true
+          cat ruff_output.txt
 
-      - name: Run mypy
-        run: mypy cogs
+      - name: Run mypy (allow failures, save output)
+        id: mypy_check
+        run: |
+          mypy cogs > mypy_output.txt || true
+          cat mypy_output.txt
 
-      - name: Security audit with pip-audit
-        run: pip-audit
+      - name: Run pip-audit (allow failures, save output)
+        id: pip_audit
+        run: |
+          pip-audit > audit_output.txt || true
+          cat audit_output.txt
 
       - name: Run tests with coverage
         run: |
@@ -53,8 +61,29 @@ jobs:
           coverage report
           coverage xml
 
-  auto-fix:
-    name: Auto Format & PR Fixes
+      - name: Save error summaries for next job
+        run: |
+          # Ruffがエラーを検出したら環境変数にセット
+          if grep -qE "error|F401|F541" ruff_output.txt; then
+            echo "RUFF_ERRORS=true" >> $GITHUB_ENV
+          else
+            echo "RUFF_ERRORS=false" >> $GITHUB_ENV
+          fi
+          # mypyも同様
+          if grep -q "error:" mypy_output.txt; then
+            echo "MYPY_ERRORS=true" >> $GITHUB_ENV
+          else
+            echo "MYPY_ERRORS=false" >> $GITHUB_ENV
+          fi
+          # pip-audit は検出件数を簡易判定
+          if grep -q "No known vulnerabilities found" audit_output.txt; then
+            echo "AUDIT_ISSUES=false" >> $GITHUB_ENV
+          else
+            echo "AUDIT_ISSUES=true" >> $GITHUB_ENV
+          fi
+
+  auto-fix-pr:
+    name: Auto Fix and PR Creation
     runs-on: ubuntu-latest
     needs: quality-check
     if: github.ref == 'refs/heads/main'
@@ -78,6 +107,7 @@ jobs:
         run: ruff cogs tests --fix
 
       - name: Check for changes
+        id: check_changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -89,7 +119,7 @@ jobs:
             echo "CHANGES=0" >> $GITHUB_ENV
           fi
 
-      - name: Create Pull Request if changes exist
+      - name: Create Pull Request if fixes applied
         if: env.CHANGES == '1'
         uses: peter-evans/create-pull-request@v5
         with:
@@ -100,3 +130,37 @@ jobs:
             This PR contains automatic code style fixes by black and ruff.
           labels: auto-fix, formatting
           delete-branch: true
+
+  issue-report:
+    name: Create Issues for Remaining Errors
+    runs-on: ubuntu-latest
+    needs: quality-check
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Create Ruff Issue
+        if: env.RUFF_ERRORS == 'true'
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: '[Lint Error] Ruff detected code issues'
+          content-filepath: ruff_output.txt
+          labels: lint, ruff
+          assignees: your-github-username
+
+      - name: Create Mypy Issue
+        if: env.MYPY_ERRORS == 'true'
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: '[Type Error] Mypy detected typing issues'
+          content-filepath: mypy_output.txt
+          labels: type-check, mypy
+          assignees: your-github-username
+
+      - name: Create Security Audit Issue
+        if: env.AUDIT_ISSUES == 'true'
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: '[Security] Vulnerabilities detected by pip-audit'
+          content-filepath: audit_output.txt
+          labels: security, audit
+          assignees: akiy2009
