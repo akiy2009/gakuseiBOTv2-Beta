@@ -1,144 +1,159 @@
-name: Python Quality CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [main]
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
+      - "main.py"
+      - "cogs/**"
+      - "tests/**"
+      - ".github/workflows/*.yml"
   pull_request:
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
+      - "main.py"
+      - "cogs/**"
+      - "tests/**"
+      - ".github/workflows/*.yml"
 
 jobs:
-  run-main:
+  lint-build-test:
     runs-on: ubuntu-latest
-    outputs:
-      ruff_failed: ${{ steps.ruff_check.outcome == 'failure' }}
-      mypy_failed: ${{ steps.mypy_check.outcome == 'failure' }}
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+      # コードを取得
+      - uses: actions/checkout@v4
 
+      # Python 環境をセットアップ
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.x'
 
-      - name: Install dependencies
+      # 必要ツールのインストール
+      - name: Install Tools
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
-          pip install black ruff mypy pytest coverage pip-audit
+          pip install ruff black mypy pytest pip-audit
 
-      - name: Run ruff (lint)
-        id: ruff_check
+      # 1. RuffによるLintチェック
+      - name: Ruff Lint Check
         run: |
-          mkdir -p reports
-          if [ -d "cogs" ]; then
-            ruff check cogs tests || true
-            ruff check cogs tests > reports/ruff.txt || true
-          fi
-
-      - name: Run mypy (type check)
-        id: mypy_check
-        run: |
-          if [ -d "cogs" ]; then
-            mypy cogs > reports/mypy.txt || true
-          fi
-
-      - name: Run pip-audit
-        run: |
-          pip-audit || true
-
-      - name: Run tests with coverage
-        run: |
-          if [ -d "tests" ]; then
-            coverage run -m pytest || true
-            coverage report || true
-            coverage xml || true
+          if [ ! -f main.py ] && [ ! -d cogs ]; then
+            echo "### Ruff Lint Skipped" > ruff_report.md
+            echo "No Python source (main.py or cogs/) found. Skipping lint." >> ruff_report.md
           else
-            echo "No tests directory. Skipping tests."
+            ruff . > ruff_output.txt || true
+            if [ -s ruff_output.txt ]; then
+              echo "### Ruff Lint Errors" > ruff_report.md
+              echo '```' >> ruff_report.md
+              cat ruff_output.txt >> ruff_report.md
+              echo '```' >> ruff_report.md
+            fi
           fi
+        continue-on-error: true
 
-  report-issues:
-    needs: run-main
-    runs-on: ubuntu-latest
+      # Ruff Lint結果をIssueとして作成 (ファイルがあればIssue化、なければ無視)
+      - name: Create Issue for Lint Errors
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Lint errors detected by Ruff"
+          content-filepath: ruff_report.md
+          labels: automated, lint
 
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Check and create issues if needed
-        if: always()
+      # 2. Ruff & Blackによる自動フォーマット
+      - name: Code Formatting (Ruff --fix + Black)
         run: |
-          mkdir -p reports
-          if [ -f reports/ruff.txt ]; then
-            echo "## Ruff Errors" > issue_body.md
-            echo '```' >> issue_body.md
-            cat reports/ruff.txt >> issue_body.md
-            echo '```' >> issue_body.md
+          if [ ! -f main.py ] && [ ! -d cogs ]; then
+            echo "### Formatting Skipped" > format_skip.md
+            echo "No Python source found. Skipping formatting." >> format_skip.md
+          else
+            ruff --fix .
+            black .
           fi
-          if [ -f reports/mypy.txt ]; then
-            echo "## Mypy Errors" >> issue_body.md
-            echo '```' >> issue_body.md
-            cat reports/mypy.txt >> issue_body.md
-            echo '```' >> issue_body.md
-          fi
+        continue-on-error: true
 
-      - name: Create Issue
-        if: always() && (success() || failure()) && (steps.check.outputs.issues_needed == 'true')
-        uses: dacbd/create-issue-action@v2
+      # フォーマットがスキップされた場合にIssue作成
+      - name: Create Issue for Formatting Skip
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Formatting Skipped"
+          content-filepath: format_skip.md
+          labels: automated, formatting
+
+      # フォーマット変更を新規ブランチでコミットしPR作成 [oai_citation:3‡github.com](https://github.com/peter-evans/create-pull-request#:~:text=1,checked%20out%20in%20the%20workflow)
+      - name: Create Pull Request for Formatting
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: "自動コードチェックの問題点"
-          body-file: issue_body.md
-
-  auto-fix:
-    needs: run-main
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install formatters
-        run: |
-          pip install black ruff
-
-      - name: Run black
-        run: |
-          if [ -d "cogs" ]; then
-            black cogs tests || true
-          fi
-
-      - name: Run ruff --fix
-        run: |
-          if [ -d "cogs" ]; then
-            ruff check cogs tests --fix || true
-          fi
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create PR with fixes
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: "style: 自動整形による修正 (black & ruff)"
-          branch: auto/format-fix
-          title: "自動整形: black & ruff による修正"
+          commit-message: ":art: Format code with Ruff & Black"
+          title: "Automated code formatting with Ruff & Black"
           body: |
-            この PR は GitHub Actions によって自動的に作成されました。
-            - `black` によるコード整形
-            - `ruff --fix` による自動修正
-          labels: auto-fix, formatting
+            This PR contains automated formatting changes (Ruff and Black). Please review and merge if appropriate.
+          labels: automated, formatting
+
+      # 3. Mypyによる型チェック
+      - name: Mypy Type Check
+        run: |
+          if [ ! -f main.py ] && [ ! -d cogs ]; then
+            echo "### MyPy Skipped" > mypy_report.md
+            echo "No Python source found. Skipping type check." >> mypy_report.md
+          else
+            mypy . > mypy_output.txt || true
+            if [ -s mypy_output.txt ]; then
+              echo "### MyPy Errors" > mypy_report.md
+              echo '```' >> mypy_report.md
+              cat mypy_output.txt >> mypy_report.md
+              echo '```' >> mypy_report.md
+            fi
+          fi
+        continue-on-error: true
+
+      # MyPy型チェック結果をIssueとして作成
+      - name: Create Issue for MyPy Errors
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Type check errors detected by MyPy"
+          content-filepath: mypy_report.md
+          labels: automated, type-check
+
+      # 4. Pytestによるテスト実行
+      - name: Run Pytest
+        run: |
+          if [ ! -d tests ]; then
+            echo "### Pytest Skipped" > pytest_report.md
+            echo "No tests directory found. Skipping tests." >> pytest_report.md
+          else
+            pytest --maxfail=1 --disable-warnings -q > pytest_output.txt || (
+              echo "### Pytest Failures" > pytest_report.md
+              echo '```' >> pytest_report.md
+              cat pytest_output.txt >> pytest_report.md
+              echo '```' >> pytest_report.md
+            )
+          fi
+        continue-on-error: true
+
+      # Pytest失敗・スキップをIssueとして作成
+      - name: Create Issue for Pytest
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Test failures or skip report"
+          content-filepath: pytest_report.md
+          labels: automated, tests
+
+      # 5. pip-auditによる依存性セキュリティスキャン
+      - name: Security scan with pip-audit
+        run: |
+          pip-audit > pip_audit.txt || true
+          if ! grep -q "No known vulnerabilities found" pip_audit.txt; then
+            echo "### Security Vulnerabilities Detected" > pip_audit_report.md
+            echo '```' >> pip_audit_report.md
+            cat pip_audit.txt >> pip_audit_report.md
+            echo '```' >> pip_audit_report.md
+          fi
+        continue-on-error: true
+
+      # pip-audit結果をIssueとして作成（脆弱性があれば）
+      - name: Create Issue for pip-audit
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Dependency security audit report"
+          content-filepath: pip_audit_report.md
+          labels: automated, security
