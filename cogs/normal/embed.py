@@ -26,14 +26,14 @@ class EmbedModal(Modal):
 
         self.image_url_input = TextInput(
             label="画像URL（任意）",
-            placeholder="画像URLを入力（空欄可）",
+            placeholder="画像URLを入力",
             required=False
         )
         self.add_item(self.image_url_input)
 
         self.color_input = TextInput(
             label="色コード（任意）",
-            placeholder="例: FF0000（未入力で青）",
+            placeholder="例: FF0000（デフォルトで青）",
             max_length=6,
             min_length=0,
             required=False
@@ -78,4 +78,5 @@ class EmbedCog(commands.Cog):
 
 async def setup(bot: commands.Bot):
     if not bot.get_cog("EmbedCog"):
+
         await bot.add_cog(EmbedCog(bot))
