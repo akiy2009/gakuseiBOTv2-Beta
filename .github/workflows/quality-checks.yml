@@ -1,16 +1,21 @@
-name: Python Quality CI
+name: Python Quality CI 🛠️ Fully Robust
 
 on:
   push:
     branches: [main]
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
-      - '.github/workflows/quality-checks.yml'
+      - 'cogs/**'
+      - 'tests/**'
+      - '.github/workflows/**'
   pull_request:
     paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
+      - 'cogs/**'
+      - 'tests/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
 
 env:
   COGS_PATH: cogs
@@ -18,146 +23,137 @@ env:
 
 jobs:
   quality-check:
-    name: 静的チェック & テスト
+    name: Static Checks & Tests
     runs-on: ubuntu-latest
     outputs:
-      ruff_errors: ${{ steps.ruff-check.outputs.errors }}
-      mypy_errors: ${{ steps.mypy-check.outputs.errors }}
-      test_skipped: ${{ steps.pytest-check.outputs.skipped }}
+      ruff_errors: ${{ steps.ruff.outputs.errors }}
+      mypy_errors: ${{ steps.mypy.outputs.errors }}
+      tests_skipped: ${{ steps.check_tests.outputs.skip }}
 
     steps:
-      - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Python セットアップ
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 依存パッケージのインストール
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt || true
-          pip install black ruff mypy flake8 pytest coverage pip-audit
+          pip install black ruff mypy pytest coverage pip-audit
 
-      - name: フォルダ存在チェック
-        id: check-paths
+      - name: Check existence of paths
+        id: check_paths
         run: |
-          echo "COGS_EXISTS=$(if [ -d "${{ env.COGS_PATH }}" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
-          echo "TESTS_EXISTS=$(if [ -d "${{ env.TESTS_PATH }}" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
+          echo "COGS_EXISTS=$(if [ -d "$COGS_PATH" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
+          echo "TESTS_EXISTS=$(if [ -d "$TESTS_PATH" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
 
-      - name: Ruff チェック
-        id: ruff-check
+      - name: Ruff Lint
+        id: ruff
         if: env.COGS_EXISTS == 'true'
         run: |
-          ERRORS=$(ruff check ${{ env.COGS_PATH }} ${{ env.TESTS_PATH }} || true)
-          echo "$ERRORS"
+          ruff check $COGS_PATH $TESTS_PATH > ruff.txt || true
           echo "errors<<EOF" >> $GITHUB_OUTPUT
-          echo "$ERRORS" >> $GITHUB_OUTPUT
+          cat ruff.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Mypy チェック
-        id: mypy-check
+      - name: Mypy Type Check
+        id: mypy
         if: env.COGS_EXISTS == 'true'
         run: |
-          ERRORS=$(mypy ${{ env.COGS_PATH }} || true)
-          echo "$ERRORS"
+          mypy $COGS_PATH > mypy.txt || true
           echo "errors<<EOF" >> $GITHUB_OUTPUT
-          echo "$ERRORS" >> $GITHUB_OUTPUT
+          cat mypy.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: セキュリティスキャン
+      - name: Security Scan
         if: env.COGS_EXISTS == 'true'
-        run: pip-audit || true
+        run: pip-audit > audit.txt || true
 
-      - name: ユニットテスト & カバレッジ
-        id: pytest-check
+      - name: Run Pytest & Coverage
+        id: check_tests
         if: env.TESTS_EXISTS == 'true'
         run: |
           coverage run -m pytest || true
           coverage report || true
-          coverage xml || true
-          echo "skipped=false" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
 
-      - name: テストスキップ
+      - name: Skip Pytest if none
         if: env.TESTS_EXISTS != 'true'
-        run: echo "skipped=true" >> $GITHUB_OUTPUT
+        id: check_tests
+        run: echo "skip=true" >> $GITHUB_OUTPUT
 
   auto-fix:
-    name: 自動整形 & PR 提出
+    name: Auto Format & PR
     needs: quality-check
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Python セットアップ
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 整形ツールインストール
+      - name: Install formatting tools
         run: pip install black ruff
 
-      - name: Black 自動整形
+      - name: Black format cogs
         if: env.COGS_EXISTS == 'true'
-        run: |
-          if [ -d "${{ env.COGS_PATH }}" ]; then black ${{ env.COGS_PATH }}; fi
-          if [ -d "${{ env.TESTS_PATH }}" ]; then black ${{ env.TESTS_PATH }}; fi
+        run: black $COGS_PATH
 
-      - name: Ruff 自動整形
+      - name: Black format tests
+        if: env.TESTS_EXISTS == 'true'
+        run: black $TESTS_PATH
+
+      - name: Ruff autofix cogs
         if: env.COGS_EXISTS == 'true'
-        run: |
-          if [ -d "${{ env.COGS_PATH }}" ]; then ruff ${{ env.COGS_PATH }} --fix; fi
-          if [ -d "${{ env.TESTS_PATH }}" ]; then ruff ${{ env.TESTS_PATH }} --fix; fi
+        run: ruff $COGS_PATH --fix
 
-      - name: Git 設定
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Ruff autofix tests
+        if: env.TESTS_EXISTS == 'true'
+        run: ruff $TESTS_PATH --fix
 
-      - name: PR を自動作成
-        uses: peter-evans/create-pull-request@v5
+      - name: Commit & PR if changes
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "style: 自動整形 (black / ruff)"
+          commit-message: "style: auto fixes by black/ruff"
           branch: auto/fix-style
-          title: "自動整形: black / ruff による修正"
-          body: |
-            自動整形ツールによって生成された PR です。
-            - `black`: Python コード整形
-            - `ruff`: Lint 自動修正
-          labels: auto-fix, style
+          title: "Auto formatting fixes"
+          body: "Autofixes applied by black and ruff"
+          labels: auto-fix, formatting
 
-  report-issues:
-    name: 問題の Issue 報告
+  issue-report:
+    name: Issue Report for Errors or Skipped
     needs: quality-check
     runs-on: ubuntu-latest
     if: |
       needs.quality-check.outputs.ruff_errors != '' ||
       needs.quality-check.outputs.mypy_errors != '' ||
-      needs.quality-check.outputs.test_skipped == 'true'
+      needs.quality-check.outputs.tests_skipped == 'true'
 
     steps:
-      - name: ✉️ Issue 作成
-        uses: peter-evans/create-issue@v2
+      - name: Create Issue From File
+        uses: peter-evans/create-issue-from-file@v5
         with:
-          title: "自動チェックでの問題検出"
-          body: |
-            自動チェックで以下の問題が検出されました。
+          title: "CI detected issues"
+          content-filepath: ruff.txt
+          labels: lint, ruff
 
-            ### Ruff Lint エラー
-            ```
-            ${{ needs.quality-check.outputs.ruff_errors }}
-            ```
+      - name: Create Mypy Issue
+        if: needs.quality-check.outputs.mypy_errors != ''
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Type issues from mypy"
+          content-filepath: mypy.txt
+          labels: type-check, mypy
 
-            ### Mypy 型チェックエラー
-            ```
-            ${{ needs.quality-check.outputs.mypy_errors }}
-            ```
-
-            ### テスト実行
-            - ステータス: ${{ needs.quality-check.outputs.test_skipped == 'true' && 'スキップ (tests フォルダなし)' || '実行済み' }}
-
-            必要に応じて修正対応をお願いします。
-          labels: bug, lint, ci
+      - name: Notify skipped tests
+        if: needs.quality-check.outputs.tests_skipped == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Tests skipped"
+          content-filepath: audit.txt
+          labels: ci-info
