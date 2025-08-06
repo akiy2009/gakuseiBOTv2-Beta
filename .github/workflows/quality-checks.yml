@@ -1,150 +1,144 @@
-name: Python Quality CI – Auto‑Fix & Issue Report
+name: Python Quality CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'cogs/**/*.py'
+      - 'tests/**/*.py'
   pull_request:
-    branches: [main]
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
-env:
-  COGS_PATH: cogs
-  TESTS_PATH: tests
+    paths:
+      - 'cogs/**/*.py'
+      - 'tests/**/*.py'
 
 jobs:
-  quality:
-    name: Static Checks & Tests
+  run-main:
     runs-on: ubuntu-latest
     outputs:
-      ruff_errors: ${{ steps._ruff.outputs.errs }}
-      mypy_errors: ${{ steps._mypy.outputs.errs }}
-      tests_skipped: ${{ steps._pytest_run.outputs.skip }}
+      ruff_failed: ${{ steps.ruff_check.outcome == 'failure' }}
+      mypy_failed: ${{ steps.mypy_check.outcome == 'failure' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install ruff black mypy pytest coverage pip-audit
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+          pip install black ruff mypy pytest coverage pip-audit
 
-      - name: Check cogs existence
-        id: _check_cogs
+      - name: Run ruff (lint)
+        id: ruff_check
         run: |
-          echo "cogs_exists=$(if [ -d \"$COGS_PATH\" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
-
-      - name: Check tests existence
-        id: _check_tests
-        run: |
-          echo "tests_exists=$(if [ -d \"$TESTS_PATH\" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
-
-      - name: Ruff lint
-        id: _ruff
-        run: |
-          if [ "${{ env.cogs_exists }}" = "true" ]; then
-            ERR=$(ruff check "$COGS_PATH" "$TESTS_PATH" || true)
-            printf "%s" "$ERR" > ruff.txt
-            echo "errs<<EOF" >> $GITHUB_OUTPUT
-            echo "$ERR" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            touch ruff.txt
-            echo "errs<<EOF" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          mkdir -p reports
+          if [ -d "cogs" ]; then
+            ruff check cogs tests || true
+            ruff check cogs tests > reports/ruff.txt || true
           fi
 
-      - name: Mypy type check
-        id: _mypy
+      - name: Run mypy (type check)
+        id: mypy_check
         run: |
-          if [ "${{ env.cogs_exists }}" = "true" ]; then
-            ERR=$(mypy "$COGS_PATH" || true)
-            printf "%s" "$ERR" > mypy.txt
-            echo "errs<<EOF" >> $GITHUB_OUTPUT
-            echo "$ERR" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            touch mypy.txt
-            echo "errs<<EOF" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          if [ -d "cogs" ]; then
+            mypy cogs > reports/mypy.txt || true
           fi
 
-      - name: Run pytest & coverage or skip
-        id: _pytest_run
+      - name: Run pip-audit
         run: |
-          if [ "${{ env.tests_exists }}" = "true" ]; then
+          pip-audit || true
+
+      - name: Run tests with coverage
+        run: |
+          if [ -d "tests" ]; then
             coverage run -m pytest || true
             coverage report || true
-            echo "skip=false" >> $GITHUB_OUTPUT
+            coverage xml || true
           else
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "No tests directory. Skipping tests."
           fi
 
-  auto_fix:
-    name: Auto Format & PR
-    needs: quality
+  report-issues:
+    needs: run-main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Check and create issues if needed
+        if: always()
+        run: |
+          mkdir -p reports
+          if [ -f reports/ruff.txt ]; then
+            echo "## Ruff Errors" > issue_body.md
+            echo '```' >> issue_body.md
+            cat reports/ruff.txt >> issue_body.md
+            echo '```' >> issue_body.md
+          fi
+          if [ -f reports/mypy.txt ]; then
+            echo "## Mypy Errors" >> issue_body.md
+            echo '```' >> issue_body.md
+            cat reports/mypy.txt >> issue_body.md
+            echo '```' >> issue_body.md
+          fi
+
+      - name: Create Issue
+        if: always() && (success() || failure()) && (steps.check.outputs.issues_needed == 'true')
+        uses: dacbd/create-issue-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "自動コードチェックの問題点"
+          body-file: issue_body.md
+
+  auto-fix:
+    needs: run-main
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install formatting tools
-        run: pip install black ruff
-
-      - name: Run auto-format
+      - name: Install formatters
         run: |
-          if [ "${{ env.cogs_exists }}" = "true" ]; then
-            black "$COGS_PATH" && ruff "$COGS_PATH" --fix || true
+          pip install black ruff
+
+      - name: Run black
+        run: |
+          if [ -d "cogs" ]; then
+            black cogs tests || true
           fi
 
-      - name: Commit & PR if changes
-        uses: peter-evans/create-pull-request@v7
+      - name: Run ruff --fix
+        run: |
+          if [ -d "cogs" ]; then
+            ruff check cogs tests --fix || true
+          fi
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create PR with fixes
+        uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: "style: auto-format by black & ruff"
-          branch: auto/fix-style
-          title: "Auto format fixes"
-          body: "Automatically formatted by black and ruff"
+          commit-message: "style: 自動整形による修正 (black & ruff)"
+          branch: auto/format-fix
+          title: "自動整形: black & ruff による修正"
+          body: |
+            この PR は GitHub Actions によって自動的に作成されました。
+            - `black` によるコード整形
+            - `ruff --fix` による自動修正
           labels: auto-fix, formatting
-
-  issue_report:
-    name: Report Issues or Skipped
-    needs: quality
-    runs-on: ubuntu-latest
-    if: ${{ needs.quality.outputs.ruff_errors != '' || needs.quality.outputs.mypy_errors != '' || needs.quality.outputs.tests_skipped == 'true' }}
-    steps:
-      - name: Create lint issue (ruff)
-        if: ${{ needs.quality.outputs.ruff_errors != '' }}
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "Lint issues detected by ruff"
-          content-filepath: ruff.txt
-          labels: lint
-
-      - name: Create type issue (mypy)
-        if: ${{ needs.quality.outputs.mypy_errors != '' }}
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "Type issues detected by mypy"
-          content-filepath: mypy.txt
-          labels: type-check
-
-      - name: Notify tests skipped
-        if: ${{ needs.quality.outputs.tests_skipped == 'true' }}
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "Tests skipped because tests folder missing"
-          content-filepath: ruff.txt
-          labels: ci-info
