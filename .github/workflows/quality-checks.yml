@@ -1,4 +1,4 @@
-name: Python Quality CI – Auto Fix & Reporting
+name: Python Quality CI – Auto‑Fix & Issue Report
 
 on:
   push:
@@ -11,13 +11,18 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  COGS_PATH: cogs
+  TESTS_PATH: tests
+
 jobs:
   quality:
+    name: Static Checks & Tests
     runs-on: ubuntu-latest
     outputs:
-      ruff_errors: ${{ steps.ruff.outputs.errors }}
-      mypy_errors: ${{ steps.mypy.outputs.errors }}
-      tests_skipped: ${{ steps.check_tests.outputs.skipped }}
+      ruff_errors: ${{ steps._ruff.outputs.errs }}
+      mypy_errors: ${{ steps._mypy.outputs.errs }}
+      tests_skipped: ${{ steps._pytest_run.outputs.skip }}
 
     steps:
       - uses: actions/checkout@v4
@@ -26,41 +31,55 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install ruff black mypy pytest coverage pip-audit
 
-      - name: Check existence of cogs folder
-        id: check_cogs
+      - name: Check cogs existence
+        id: _check_cogs
         run: |
-          echo "cogs_exists=$(if [ -d cogs ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
+          echo "cogs_exists=$(if [ -d \"$COGS_PATH\" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
 
-      - name: Check existence of tests folder
-        id: check_tests
+      - name: Check tests existence
+        id: _check_tests
         run: |
-          echo "tests_exists=$(if [ -d tests ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
+          echo "tests_exists=$(if [ -d \"$TESTS_PATH\" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
 
-      - name: Run ruff check
-        id: ruff
+      - name: Ruff lint
+        id: _ruff
         run: |
-          ERR=$(if [ "${{ env.cogs_exists }}" = "true" ]; then ruff check cogs || true; fi)
-          echo "$ERR" | tee ruff.txt
-          echo "errors<<EOF" >> $GITHUB_OUTPUT
-          echo "$ERR" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          if [ "${{ env.cogs_exists }}" = "true" ]; then
+            ERR=$(ruff check "$COGS_PATH" "$TESTS_PATH" || true)
+            printf "%s" "$ERR" > ruff.txt
+            echo "errs<<EOF" >> $GITHUB_OUTPUT
+            echo "$ERR" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            touch ruff.txt
+            echo "errs<<EOF" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Run mypy
-        id: mypy
+      - name: Mypy type check
+        id: _mypy
         run: |
-          ERR=$(if [ "${{ env.cogs_exists }}" = "true" ]; then mypy cogs || true; fi)
-          echo "$ERR" | tee mypy.txt
-          echo "errors<<EOF" >> $GITHUB_OUTPUT
-          echo "$ERR" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          if [ "${{ env.cogs_exists }}" = "true" ]; then
+            ERR=$(mypy "$COGS_PATH" || true)
+            printf "%s" "$ERR" > mypy.txt
+            echo "errs<<EOF" >> $GITHUB_OUTPUT
+            echo "$ERR" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            touch mypy.txt
+            echo "errs<<EOF" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Run pytest
-        id: pytest-run
+      - name: Run pytest & coverage or skip
+        id: _pytest_run
         run: |
           if [ "${{ env.tests_exists }}" = "true" ]; then
             coverage run -m pytest || true
@@ -71,38 +90,42 @@ jobs:
           fi
 
   auto_fix:
+    name: Auto Format & PR
     needs: quality
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install formatting tools
         run: pip install black ruff
 
-      - name: Apply black and ruff fixes
+      - name: Run auto-format
         run: |
           if [ "${{ env.cogs_exists }}" = "true" ]; then
-            black cogs && ruff cogs --fix || true
+            black "$COGS_PATH" && ruff "$COGS_PATH" --fix || true
           fi
 
-      - name: Commit & PR if fixes detected
+      - name: Commit & PR if changes
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "style: auto-format by black and ruff"
+          commit-message: "style: auto-format by black & ruff"
           branch: auto/fix-style
           title: "Auto format fixes"
           body: "Automatically formatted by black and ruff"
           labels: auto-fix, formatting
 
   issue_report:
+    name: Report Issues or Skipped
     needs: quality
     runs-on: ubuntu-latest
     if: ${{ needs.quality.outputs.ruff_errors != '' || needs.quality.outputs.mypy_errors != '' || needs.quality.outputs.tests_skipped == 'true' }}
     steps:
-      - name: Create issue from lint
+      - name: Create lint issue (ruff)
         if: ${{ needs.quality.outputs.ruff_errors != '' }}
         uses: peter-evans/create-issue-from-file@v5
         with:
@@ -110,7 +133,7 @@ jobs:
           content-filepath: ruff.txt
           labels: lint
 
-      - name: Create issue from mypy
+      - name: Create type issue (mypy)
         if: ${{ needs.quality.outputs.mypy_errors != '' }}
         uses: peter-evans/create-issue-from-file@v5
         with:
@@ -118,10 +141,10 @@ jobs:
           content-filepath: mypy.txt
           labels: type-check
 
-      - name: Notify test skip
+      - name: Notify tests skipped
         if: ${{ needs.quality.outputs.tests_skipped == 'true' }}
         uses: peter-evans/create-issue-from-file@v5
         with:
-          title: "Tests folder missing, tests skipped"
+          title: "Tests skipped because tests folder missing"
           content-filepath: ruff.txt
           labels: ci-info
