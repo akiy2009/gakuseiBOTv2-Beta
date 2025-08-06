@@ -55,27 +55,40 @@ jobs:
           pip-audit > audit_output.txt || true
           cat audit_output.txt
 
-      - name: Run tests with coverage
+      - name: Check if test files exist
+        id: testfiles
         run: |
-          coverage run -m pytest
+          if ls tests/test_*.py tests/*_test.py 1> /dev/null 2>&1; then
+            echo "TESTS_FOUND=true" >> $GITHUB_ENV
+          else
+            echo "TESTS_FOUND=false" >> $GITHUB_ENV
+          fi
+
+      - name: Run tests with coverage (only if test files found)
+        if: env.TESTS_FOUND == 'true'
+        run: |
+          coverage run -m pytest tests/
           coverage report
           coverage xml
 
-      - name: Save error summaries for next job
+      - name: Skip tests notice
+        if: env.TESTS_FOUND == 'false'
+        run: echo "No test files found, skipping tests."
+
+      - name: Save error flags for next jobs
         run: |
-          # Ruffがエラーを検出したら環境変数にセット
           if grep -qE "error|F401|F541" ruff_output.txt; then
             echo "RUFF_ERRORS=true" >> $GITHUB_ENV
           else
             echo "RUFF_ERRORS=false" >> $GITHUB_ENV
           fi
-          # mypyも同様
+
           if grep -q "error:" mypy_output.txt; then
             echo "MYPY_ERRORS=true" >> $GITHUB_ENV
           else
             echo "MYPY_ERRORS=false" >> $GITHUB_ENV
           fi
-          # pip-audit は検出件数を簡易判定
+
           if grep -q "No known vulnerabilities found" audit_output.txt; then
             echo "AUDIT_ISSUES=false" >> $GITHUB_ENV
           else
@@ -145,7 +158,7 @@ jobs:
           title: '[Lint Error] Ruff detected code issues'
           content-filepath: ruff_output.txt
           labels: lint, ruff
-          assignees: your-github-username
+          assignees: akiy2009
 
       - name: Create Mypy Issue
         if: env.MYPY_ERRORS == 'true'
@@ -154,7 +167,7 @@ jobs:
           title: '[Type Error] Mypy detected typing issues'
           content-filepath: mypy_output.txt
           labels: type-check, mypy
-          assignees: your-github-username
+          assignees: akiy2009
 
       - name: Create Security Audit Issue
         if: env.AUDIT_ISSUES == 'true'
