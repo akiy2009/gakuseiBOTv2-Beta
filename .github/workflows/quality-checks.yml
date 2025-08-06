@@ -236,7 +236,7 @@ jobs:
 
       - name: Create Issue for Missing tests Folder
         if: env.TESTS_EXISTS == 'false'
-        uses: peter-evans/create-issue@v3
+        uses: peter-evans/create-issue-from-file@v4
         with:
           title: '[Info] tests フォルダが見つかりませんでした'
           body: |
