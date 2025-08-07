@@ -6,7 +6,6 @@ on:
     paths:
       - 'cogs/**/*.py'
       - 'tests/**/*.py'
-      - '.github/workflows/quality-checks.yml'
   pull_request:
     paths:
       - 'cogs/**/*.py'
@@ -14,137 +13,146 @@ on:
 
 jobs:
   quality-check:
-    name: Quality Checks (Lint, Type, Test)
+    name: Quality Checks
     runs-on: ubuntu-latest
-
     outputs:
-      had_errors: ${{ steps.error-check.outputs.had_errors }}
+      had_errors: ${{ steps.set-result.outputs.had_errors }}
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install black ruff mypy flake8 pytest coverage pip-audit
 
-      - name: Check for cogs and tests folders
-        id: check-folders
-        run: |
-          echo "COGS_EXISTS=$(if [ -d "cogs" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
-          echo "TESTS_EXISTS=$(if [ -d "tests" ]; then echo true; else echo false; fi)" >> $GITHUB_ENV
-
-      - name: Run ruff check
-        if: env.COGS_EXISTS == 'true' || env.TESTS_EXISTS == 'true'
-        continue-on-error: true
+      - name: Run ruff (lint)
         id: ruff
         run: |
-          ruff check cogs tests || echo "Ruff found issues."
+          if ls cogs/**/*.py >/dev/null 2>&1; then
+            ruff check cogs tests || echo "Ruff failed" > ruff_error.log
+          fi
 
       - name: Run mypy
-        if: env.COGS_EXISTS == 'true'
-        continue-on-error: true
         id: mypy
         run: |
-          mypy cogs || echo "Mypy found issues."
+          if ls cogs/**/*.py >/dev/null 2>&1; then
+            mypy cogs || echo "Mypy failed" > mypy_error.log
+          fi
 
       - name: Run pip-audit
-        continue-on-error: true
+        id: audit
         run: |
-          pip-audit
+          pip-audit || echo "Audit failed" > audit_error.log
 
-      - name: Run tests with coverage
-        if: env.TESTS_EXISTS == 'true'
-        continue-on-error: true
-        id: pytest
+      - name: Run tests
+        id: test
         run: |
-          coverage run -m pytest || echo "Pytest failed or no tests."
-          coverage report || true
-          coverage xml || true
-
-      - name: Check for errors
-        id: error-check
-        run: |
-          if [ "${{ steps.ruff.outcome }}" != "success" ] || [ "${{ steps.mypy.outcome }}" != "success" ] || [ "${{ steps.pytest.outcome }}" != "success" ]; then
-            echo "had_errors=true" >> $GITHUB_OUTPUT
+          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then
+            coverage run -m pytest || echo "Test failed" > test_error.log
+            coverage report || true
           else
-            echo "had_errors=false" >> $GITHUB_OUTPUT
+            echo "No tests found, skipping"
           fi
+
+      - name: Aggregate errors
+        id: set-result
+        run: |
+          ERRORS=false
+          for f in *.log; do
+            [ -f "$f" ] && ERRORS=true && break
+          done
+          echo "had_errors=${ERRORS}" >> $GITHUB_OUTPUT
+
+  create-issue-if-errors:
+    name: Create Issue on Errors
+    needs: quality-check
+    if: needs.quality-check.outputs.had_errors == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs
+          path: |
+            *.log
+
+      - name: Create issue
+        uses: peter-evans/create-issue@v4
+        with:
+          title: "CIでエラーが検出されました"
+          body: |
+            GitHub Actions の自動チェックにてエラーが検出されました。
+
+            - Lint (ruff)
+            - 型チェック (mypy)
+            - テスト (pytest)
+            - セキュリティチェック (pip-audit)
+
+            詳細は [ログファイル](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) または添付ファイルを確認してください。
+
+          labels: bug, ci, auto-detected
 
   auto-fix:
     name: Auto Format & PR
-    runs-on: ubuntu-latest
     needs: quality-check
-
-    if: needs.quality-check.outputs.had_errors == 'true' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install formatters
-        run: |
-          pip install black ruff
+        run: pip install black ruff
 
-      - name: Run black
-        if: env.COGS_EXISTS == 'true' || env.TESTS_EXISTS == 'true'
+      - name: Check if code exists
+        id: check-code
         run: |
-          if [ -d "cogs" ] || [ -d "tests" ]; then black cogs tests || true; fi
+          if ls cogs/**/*.py >/dev/null 2>&1; then
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Run ruff fix
-        if: env.COGS_EXISTS == 'true' || env.TESTS_EXISTS == 'true'
-        run: |
-          if [ -d "cogs" ] || [ -d "tests" ]; then ruff cogs tests --fix || true; fi
+      - name: Format with black
+        if: steps.check-code.outputs.found == 'true'
+        run: black cogs tests || true
 
-      - name: Check for changes
+      - name: Format with ruff
+        if: steps.check-code.outputs.found == 'true'
+        run: ruff cogs tests --fix || true
+
+      - name: Check git diff
         id: git-check
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet || echo "CHANGED=true" >> $GITHUB_ENV
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Create PR
-        if: env.CHANGED == 'true'
+      - name: Create PR for auto-fix
+        if: steps.git-check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: "style: 自動整形による修正 (black/ruff)"
-          branch: auto/format-fix
-          title: "自動整形: black/ruff によるコード修正"
+          commit-message: "style: 自動整形 (black/ruff)"
+          branch: auto/code-fix
+          title: "自動整形: コードフォーマット (black/ruff)"
           body: |
-            GitHub Actions により自動生成された PR です。
-            - `black` による整形
-            - `ruff --fix` による修正
+            GitHub Actions によって自動でコード整形されたPRです。
+            - `black`
+            - `ruff --fix`
           labels: auto-fix, formatting
-
-  create-issues:
-    name: Create Issues for Problems
-    runs-on: ubuntu-latest
-    needs: quality-check
-
-    if: needs.quality-check.outputs.had_errors == 'true'
-
-    steps:
-      - name: Create Issue
-        uses: peter-evans/create-issue@v4
-        with:
-          title: '[CI Warning] Lint/型チェック/テストでエラーが検出されました'
-          body: |
-            自動チェックにて以下の問題が検出されました。
-            - Ruff (Lint)
-            - Mypy (型チェック)
-            - Pytest (ユニットテスト)
-
-            詳細は最新の [GitHub Actions 実行ログ](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) をご確認ください。
-          labels: bug, ci, auto-generated
