@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # コードを取得
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
       # Python 環境をセットアップ
       - name: Set up Python
