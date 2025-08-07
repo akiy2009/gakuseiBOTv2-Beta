@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch all branches
-        run: git fetch --prune --unshallow --all
+        run: git fetch --prune --all
 
       - name: Setup Python
         uses: actions/setup-python@v5
