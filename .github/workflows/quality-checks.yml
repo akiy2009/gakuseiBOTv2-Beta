@@ -169,6 +169,7 @@ jobs:
         with:
           commit-message: "style: 自動整形 (black/ruff)"
           branch: auto/format-fix
+          base: main
           title: "自動整形: black/ruff による修正"
           body: |
             GitHub Actions によって自動で作成された PR です。
