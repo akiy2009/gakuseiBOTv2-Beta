@@ -157,3 +157,7 @@ jobs:
           title: "Dependency security audit report"
           content-filepath: pip_audit_report.md
           labels: automated, security
+      - name: Git Config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
