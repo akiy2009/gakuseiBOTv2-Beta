@@ -146,17 +146,9 @@ jobs:
       - name: Debug commit output
         run: echo "changed=${{ steps.commit.outputs.changed }}"
 
-      - name: Delete remote branch if exists
+      - name: Skip remote branch deletion and push normally
         if: steps.commit.outputs.changed == 'true'
-        run: |
-          BRANCH="auto/format-fix"
-          REMOTE="origin"
-          if git ls-remote --exit-code --heads $REMOTE $BRANCH; then
-            echo "Remote branch $BRANCH exists. Deleting..."
-            git push $REMOTE --delete $BRANCH
-          else
-            echo "Remote branch $BRANCH does not exist."
-          fi
+        run: echo "Skipping remote branch deletion, pushing normally."
 
       - name: Push branch with fixes
         if: steps.commit.outputs.changed == 'true'
