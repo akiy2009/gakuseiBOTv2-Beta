@@ -87,6 +87,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # フル履歴取得必須（ブランチ削除用）
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -114,11 +116,23 @@ jobs:
             echo "No target directory for ruff"
           fi
 
-      - name: Commit and Push if Changes
-        id: commit
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create / Switch to auto format branch
+        run: |
+          BRANCH="auto/format-fix"
+          # すでに存在するならローカル削除
+          if git show-ref --verify --quiet refs/heads/$BRANCH; then
+            git branch -D $BRANCH
+          fi
+          # 新規作成して切り替え
+          git checkout -b $BRANCH
+
+      - name: Add changes
+        run: |
           git add .
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -128,7 +142,26 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create PR for fixes
+      - name: Delete remote branch if exists
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          BRANCH="auto/format-fix"
+          REMOTE="origin"
+          # リモートにブランチが存在するか確認
+          if git ls-remote --exit-code --heads $REMOTE $BRANCH; then
+            echo "Remote branch $BRANCH exists. Deleting..."
+            git push $REMOTE --delete $BRANCH
+          else
+            echo "Remote branch $BRANCH does not exist."
+          fi
+
+      - name: Push branch with fixes
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          BRANCH="auto/format-fix"
+          git push origin $BRANCH
+
+      - name: Create Pull Request for fixes
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
@@ -145,6 +178,7 @@ jobs:
         if: steps.commit.outputs.changed == 'false'
         run: |
           mkdir -p .github/issues
+          # artifactは../logsにあるはずなので相対パス注意
           cat ../logs/mypy_output.txt | grep -v "Success:" > .github/issues/mypy.txt || true
           cat ../logs/audit_output.txt > .github/issues/audit.txt || true
           cat ../logs/ruff_output.txt | grep -v "All checks passed" > .github/issues/ruff.txt || true
