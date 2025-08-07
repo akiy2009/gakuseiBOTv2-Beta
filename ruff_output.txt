@@ -1,0 +1,94 @@
+cogs/admin/admin.py:4:8: F401 [*] `os` imported but unused
+  |
+2 | from discord.ext import commands
+3 | from discord import app_commands
+4 | import os
+  |        ^^ F401
+5 | import glob
+  |
+  = help: Remove unused import: `os`
+
+cogs/error.py:3:22: F401 [*] `datetime.datetime` imported but unused
+  |
+1 | import discord
+2 | from discord.ext import commands
+3 | from datetime import datetime
+  |                      ^^^^^^^^ F401
+4 | import time
+  |
+  = help: Remove unused import: `datetime.datetime`
+
+cogs/normal/about.py:20:51: F541 [*] f-string without any placeholders
+   |
+18 |         embed.add_field(name="License", value="MIT License", inline=False)
+19 |         embed.add_field(name="Version", value="2.0.0-beta", inline=False)
+20 |         embed.add_field(name="Contributor", value=f"[Akiy2009](https://github.com/akiy2009)", inline=False)
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ F541
+21 |         embed.add_field(name="GitHub repository", value=f"https://github.com/akiy2009/gakuseiBOTv2-Beta", inline=False)
+22 |         embed.add_field(name="Support Server", value=f"[Join here](https://discord.gg/9x3FwmPxhP)", inline=False)
+   |
+   = help: Remove extraneous `f` prefix
+
+cogs/normal/about.py:21:57: F541 [*] f-string without any placeholders
+   |
+19 |         embed.add_field(name="Version", value="2.0.0-beta", inline=False)
+20 |         embed.add_field(name="Contributor", value=f"[Akiy2009](https://github.com/akiy2009)", inline=False)
+21 |         embed.add_field(name="GitHub repository", value=f"https://github.com/akiy2009/gakuseiBOTv2-Beta", inline=False)
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ F541
+22 |         embed.add_field(name="Support Server", value=f"[Join here](https://discord.gg/9x3FwmPxhP)", inline=False)
+23 |         embed.add_field(name="Website", value="https://gakuseibot.com", inline=False)
+   |
+   = help: Remove extraneous `f` prefix
+
+cogs/normal/about.py:22:54: F541 [*] f-string without any placeholders
+   |
+20 |         embed.add_field(name="Contributor", value=f"[Akiy2009](https://github.com/akiy2009)", inline=False)
+21 |         embed.add_field(name="GitHub repository", value=f"https://github.com/akiy2009/gakuseiBOTv2-Beta", inline=False)
+22 |         embed.add_field(name="Support Server", value=f"[Join here](https://discord.gg/9x3FwmPxhP)", inline=False)
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ F541
+23 |         embed.add_field(name="Website", value="https://gakuseibot.com", inline=False)
+24 |         embed.add_field(name="Update Info", value="https://gakuseibot.com/updates", inline=False)
+   |
+   = help: Remove extraneous `f` prefix
+
+cogs/test_sample.py:3:1: E401 [*] Multiple imports on one line
+  |
+1 | # coding: utf-8
+2 |
+3 | import os, sys  # ← ruff で unused import や multiple imports on one line エラー
+  | ^^^^^^^^^^^^^^ E401
+4 |
+5 | def greet(name:str)->str:  # ← スペースがなく black で修正される
+  |
+  = help: Split imports
+
+cogs/test_sample.py:3:8: F401 [*] `os` imported but unused
+  |
+1 | # coding: utf-8
+2 |
+3 | import os, sys  # ← ruff で unused import や multiple imports on one line エラー
+  |        ^^ F401
+4 |
+5 | def greet(name:str)->str:  # ← スペースがなく black で修正される
+  |
+  = help: Remove unused import
+
+cogs/test_sample.py:3:12: F401 [*] `sys` imported but unused
+  |
+1 | # coding: utf-8
+2 |
+3 | import os, sys  # ← ruff で unused import や multiple imports on one line エラー
+  |            ^^^ F401
+4 |
+5 | def greet(name:str)->str:  # ← スペースがなく black で修正される
+  |
+  = help: Remove unused import
+
+cogs/tests/aa_test.py:1:1: F821 Undefined name `aaa`
+  |
+1 | aaa
+  | ^^^ F821
+  |
+
+Found 9 errors.
+[*] 8 fixable with the `--fix` option.
