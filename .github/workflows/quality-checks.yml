@@ -135,6 +135,15 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Delete existing remote branch if it exists
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          branch="${{ steps.branch_name.outputs.value }}"
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            echo "Remote branch $branch already exists. Deleting it..."
+            git push origin --delete "$branch"
+          fi
+
       - name: Push branch
         if: steps.commit.outputs.changed == 'true'
         run: git push origin "${{ steps.branch_name.outputs.value }}"
