@@ -88,6 +88,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch all branches
+        run: git fetch --prune --unshallow --all
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -113,7 +116,6 @@ jobs:
 
       - name: Create new branch from main
         run: |
-          git fetch origin main
           git checkout -b "${{ steps.branch_name.outputs.value }}" origin/main
 
       - name: Run formatters (black, ruff)
@@ -135,12 +137,6 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Fetch all branches before PR creation
-        if: steps.commit.outputs.changed == 'true'
-        run: git fetch --all
-
-      # git push は行わず、create-pull-request に任せる
-
       - name: Create Pull Request (only if changed)
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
@@ -157,7 +153,6 @@ jobs:
           labels: auto-fix, formatting
           delete-branch: false
           draft: false
-          create-branch: true
 
       - name: Create GitHub Issues for static analysis errors
         if: steps.commit.outputs.changed == 'false'
