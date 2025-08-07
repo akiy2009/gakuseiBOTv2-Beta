@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 履歴全部取得
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -88,7 +90,7 @@ jobs:
       TIMESTAMP: ${{ github.run_id }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -117,18 +119,16 @@ jobs:
             echo "No target directory for ruff"
           fi
 
-      - name: Configure git
+      - name: Configure git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create unique branch from main
         run: |
-          BRANCH="auto/format-fix-${TIMESTAMP}"
+          UNIQUE_ID=$(uuidgen | tr 'A-Z' 'a-z' | cut -d'-' -f1)
+          BRANCH="auto/format-fix-${{ github.run_id }}-${UNIQUE_ID}"
           git fetch origin main
-          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
-            git push origin --delete "$BRANCH"
-          fi
           git checkout -b "$BRANCH" origin/main
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
@@ -144,7 +144,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push new branch
+      - name: Push branch if changes
         if: steps.commit.outputs.changed == 'true'
         run: |
           git push origin "$BRANCH"
@@ -177,7 +177,7 @@ jobs:
           for file in .github/issues/*.txt; do
             if [ -s "$file" ]; then
               issue_title="Code Quality Issue: $(basename "$file" .txt)"
-              issue_body="$(cat $file)"
+              issue_body=$(cat "$file")
               gh issue create --title "$issue_title" --body "$issue_body" --label "ci-auto"
             fi
           done
