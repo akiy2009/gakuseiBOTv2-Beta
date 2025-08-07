@@ -83,7 +83,6 @@ jobs:
     name: Auto Fix & PR/Issue
 
     env:
-      TIMESTAMP: ${{ github.run_id }}
       BRANCH_NAME: auto/format-fix-${{ github.run_id }}
 
     steps:
@@ -121,7 +120,8 @@ jobs:
 
       - name: Create new branch from main
         run: |
-          git checkout -B "${BRANCH_NAME}" origin/main
+          git checkout origin/main
+          git switch -c "${BRANCH_NAME}"
 
       - name: Run formatters (black, ruff)
         run: |
