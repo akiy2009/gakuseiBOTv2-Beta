@@ -87,7 +87,7 @@ jobs:
             *.log
 
       - name: Create issue
-        uses: peter-evans/create-issue@v4
+        uses: peter-evans/create-issue@v3.1.0
         with:
           title: "CIでエラーが検出されました"
           body: |
