@@ -1,4 +1,4 @@
-name: Python Quality CI
+かname: Python Quality CI
 
 on:
   push:
