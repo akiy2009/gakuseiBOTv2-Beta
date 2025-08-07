@@ -35,7 +35,6 @@ jobs:
           pip install black ruff mypy flake8 pytest coverage pip-audit
 
       - name: Run Ruff (Lint)
-        id: ruff
         continue-on-error: true
         run: |
           if [ -d "cogs" ]; then
@@ -44,7 +43,6 @@ jobs:
           fi
 
       - name: Run Mypy (Type Checking)
-        id: mypy
         continue-on-error: true
         run: |
           if [ -d "cogs" ]; then
@@ -53,14 +51,12 @@ jobs:
           fi
 
       - name: Run pip-audit (Security)
-        id: audit
         continue-on-error: true
         run: |
           pip-audit > audit_output.txt || true
           cat audit_output.txt
 
       - name: Run Pytest (Tests with Coverage)
-        id: tests
         continue-on-error: true
         run: |
           if [ -d "tests" ]; then
@@ -75,7 +71,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: quality-logs
           path: |
             ruff_output.txt
             mypy_output.txt
@@ -87,7 +83,6 @@ jobs:
     needs: quality-checks
 
     env:
-      # github.run_id は GitHub Actions の組み込み環境変数なのでこれでOK
       TIMESTAMP: ${{ github.run_id }}
 
     steps:
@@ -100,6 +95,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Download logs from previous job
+        uses: actions/download-artifact@v4
+        with:
+          name: quality-logs
 
       - name: Install formatters
         run: pip install black ruff
@@ -127,10 +127,9 @@ jobs:
 
       - name: Create unique branch from main
         run: |
-          UNIQUE_ID=$(uuidgen | tr 'A-Z' 'a-z' | cut -d'-' -f1)
+          UNIQUE_ID=$(head -c 8 /dev/urandom | base64 | tr -dc a-z0-9 | head -c 8)
           BRANCH="auto/format-fix-${TIMESTAMP}-${UNIQUE_ID}"
           git fetch origin main
-          # -B は既存ブランチを上書きして切り替え
           git checkout -B "$BRANCH" origin/main
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
@@ -170,8 +169,6 @@ jobs:
 
       - name: Setup GitHub CLI
         uses: actions/setup-gh@v3
-        with:
-          version: latest
 
       - name: Create Issues for Mypy / Audit / Ruff Errors
         if: steps.commit.outputs.changed == 'false'
