@@ -84,6 +84,9 @@ jobs:
     name: Auto Fix & PR/Issue
     needs: quality-checks
 
+    env:
+      TIMESTAMP: ${{ github.run_id }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -119,14 +122,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create / Switch to auto format branch
+      - name: Create / Switch to unique auto format branch
         run: |
-          BRANCH="auto/format-fix"
+          BRANCH="auto/format-fix-${TIMESTAMP}"
           git fetch origin main
-          git branch -D $BRANCH || true
           git checkout -b $BRANCH origin/main
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
-      - name: Add changes and check diff
+      - name: Add changes and commit
         id: commit
         run: |
           git add .
@@ -138,21 +141,17 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Debug commit output
-        run: echo "changed=${{ steps.commit.outputs.changed }}"
-
       - name: Push branch with fixes
         if: steps.commit.outputs.changed == 'true'
         run: |
-          BRANCH="auto/format-fix"
-          git push origin $BRANCH
+          git push origin ${{ env.BRANCH }}
 
       - name: Create Pull Request for fixes
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           commit-message: "style: 自動整形 (black/ruff)"
-          branch: auto/format-fix
+          branch: ${{ env.BRANCH }}
           base: main
           title: "自動整形: black/ruff による修正"
           body: |
