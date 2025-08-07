@@ -126,6 +126,9 @@ jobs:
         run: |
           BRANCH="auto/format-fix-${TIMESTAMP}"
           git fetch origin main
+          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
+            git push origin --delete "$BRANCH"
+          fi
           git checkout -b "$BRANCH" origin/main
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
@@ -167,14 +170,14 @@ jobs:
         if: steps.commit.outputs.changed == 'false'
         run: |
           mkdir -p .github/issues
-          cat ../logs/mypy_output.txt | grep -v "Success:" > .github/issues/mypy.txt || true
-          cat ../logs/audit_output.txt > .github/issues/audit.txt || true
-          cat ../logs/ruff_output.txt | grep -v "All checks passed" > .github/issues/ruff.txt || true
+          cat ruff_output.txt | grep -v "All checks passed" > .github/issues/ruff.txt || true
+          cat mypy_output.txt | grep -v "Success:" > .github/issues/mypy.txt || true
+          cat audit_output.txt > .github/issues/audit.txt || true
 
           for file in .github/issues/*.txt; do
             if [ -s "$file" ]; then
               issue_title="Code Quality Issue: $(basename "$file" .txt)"
-              issue_body=$(cat "$file")
+              issue_body="$(cat $file)"
               gh issue create --title "$issue_title" --body "$issue_body" --label "ci-auto"
             fi
           done
