@@ -122,10 +122,11 @@ jobs:
       - name: Create / Switch to auto format branch
         run: |
           BRANCH="auto/format-fix"
+          git fetch origin main
           if git rev-parse --verify $BRANCH; then
             git branch -D $BRANCH
           fi
-          git checkout -b $BRANCH
+          git checkout -b $BRANCH origin/main
 
       - name: Add changes and check diff
         id: commit
