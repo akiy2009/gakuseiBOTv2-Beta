@@ -3,156 +3,157 @@ name: Python Quality CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
   pull_request:
-    paths:
-      - 'cogs/**/*.py'
-      - 'tests/**/*.py'
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-  quality-check:
-    name: Quality Checks
+  quality-checks:
     runs-on: ubuntu-latest
-    outputs:
-      had_errors: ${{ steps.set-result.outputs.had_errors }}
+    name: Code Quality Checks
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements.txt || true
           pip install black ruff mypy flake8 pytest coverage pip-audit
 
-      - name: Run ruff (lint)
+      - name: Run Ruff (Lint)
         id: ruff
+        continue-on-error: true
         run: |
-          if ls cogs/**/*.py >/dev/null 2>&1; then
-            ruff check cogs tests || echo "Ruff failed" > ruff_error.log
+          if [ -d "cogs" ]; then
+            ruff check cogs > ruff_output.txt || true
+            cat ruff_output.txt
           fi
 
-      - name: Run mypy
+      - name: Run Mypy (Type Checking)
         id: mypy
+        continue-on-error: true
         run: |
-          if ls cogs/**/*.py >/dev/null 2>&1; then
-            mypy cogs || echo "Mypy failed" > mypy_error.log
+          if [ -d "cogs" ]; then
+            mypy cogs > mypy_output.txt || true
+            cat mypy_output.txt
           fi
 
-      - name: Run pip-audit
+      - name: Run pip-audit (Security)
         id: audit
+        continue-on-error: true
         run: |
-          pip-audit || echo "Audit failed" > audit_error.log
+          pip-audit > audit_output.txt || true
+          cat audit_output.txt
 
-      - name: Run tests
-        id: test
+      - name: Run Pytest (Tests with Coverage)
+        id: tests
+        continue-on-error: true
         run: |
-          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then
-            coverage run -m pytest || echo "Test failed" > test_error.log
+          if [ -d "tests" ]; then
+            coverage run -m pytest || true
             coverage report || true
+            coverage xml || true
           else
-            echo "No tests found, skipping"
+            echo "No tests directory found, skipping tests."
           fi
 
-      - name: Aggregate errors
-        id: set-result
-        run: |
-          ERRORS=false
-          for f in *.log; do
-            [ -f "$f" ] && ERRORS=true && break
-          done
-          echo "had_errors=${ERRORS}" >> $GITHUB_OUTPUT
-
-  create-issue-if-errors:
-    name: Create Issue on Errors
-    needs: quality-check
-    if: needs.quality-check.outputs.had_errors == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Upload logs
+      - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: error-logs
+          name: logs
           path: |
-            *.log
+            ruff_output.txt
+            mypy_output.txt
+            audit_output.txt
 
-      - name: Create issue
-        uses: peter-evans/create-issue@v3.1.0
-        with:
-          title: "CIでエラーが検出されました"
-          body: |
-            GitHub Actions の自動チェックにてエラーが検出されました。
-
-            - Lint (ruff)
-            - 型チェック (mypy)
-            - テスト (pytest)
-            - セキュリティチェック (pip-audit)
-
-            詳細は [ログファイル](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) または添付ファイルを確認してください。
-
-          labels: bug, ci, auto-detected
-
-  auto-fix:
-    name: Auto Format & PR
-    needs: quality-check
-    if: github.ref == 'refs/heads/main'
+  auto-fix-and-report:
     runs-on: ubuntu-latest
+    name: Auto Fix & PR/Issue
+    needs: quality-checks
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install formatters
         run: pip install black ruff
 
-      - name: Check if code exists
-        id: check-code
+      - name: Run Black (auto-format)
+        id: black
         run: |
-          if ls cogs/**/*.py >/dev/null 2>&1; then
-            echo "found=true" >> $GITHUB_OUTPUT
+          if [ -d "cogs" ]; then
+            black cogs tests || true
           else
-            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No target directory for black"
           fi
 
-      - name: Format with black
-        if: steps.check-code.outputs.found == 'true'
-        run: black cogs tests || true
-
-      - name: Format with ruff
-        if: steps.check-code.outputs.found == 'true'
-        run: ruff cogs tests --fix || true
-
-      - name: Check git diff
-        id: git-check
+      - name: Run Ruff Fix (auto-fix)
+        id: ruff-fix
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+          if [ -d "cogs" ]; then
+            ruff check cogs tests --fix || true
           else
+            echo "No target directory for ruff"
+          fi
+
+      - name: Commit and Push if Changes
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
             echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "style: 自動整形による修正 (black/ruff)"
+            echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create PR for auto-fix
-        if: steps.git-check.outputs.changed == 'true'
+      - name: Create PR for fixes
+        if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           commit-message: "style: 自動整形 (black/ruff)"
-          branch: auto/code-fix
-          title: "自動整形: コードフォーマット (black/ruff)"
+          branch: auto/format-fix
+          title: "自動整形: black/ruff による修正"
           body: |
-            GitHub Actions によって自動でコード整形されたPRです。
-            - `black`
-            - `ruff --fix`
+            GitHub Actions によって自動で作成された PR です。
+            - `black` によるコード整形
+            - `ruff` による Lint 修正
           labels: auto-fix, formatting
+
+      - name: Create Issues for Mypy / Audit / Ruff Errors
+        if: steps.commit.outputs.changed == 'false'
+        run: |
+          mkdir -p .github/issues
+          cat ../logs/mypy_output.txt | grep -v "Success:" > .github/issues/mypy.txt || true
+          cat ../logs/audit_output.txt > .github/issues/audit.txt || true
+          cat ../logs/ruff_output.txt | grep -v "All checks passed" > .github/issues/ruff.txt || true
+
+          for file in .github/issues/*.txt; do
+            if [ -s "$file" ]; then
+              issue_title="Code Quality Issue: $(basename "$file" .txt)"
+              issue_body=$(cat "$file")
+              gh issue create --title "$issue_title" --body "$issue_body" --label "ci-auto"
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
