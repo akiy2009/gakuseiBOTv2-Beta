@@ -82,9 +82,6 @@ jobs:
     needs: quality-checks
     name: Auto Fix & PR/Issue
 
-    env:
-      BRANCH_NAME: auto/format-fix-${{ github.run_id }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -110,18 +107,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Delete existing branch if exists
-        run: |
-          git fetch origin
-          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}"; then
-            echo "Branch ${BRANCH_NAME} exists. Deleting..."
-            git push origin --delete "${BRANCH_NAME}"
-          fi
+      - name: Generate unique branch name
+        id: branch_name
+        run: echo "value=auto/format-fix-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Create new branch from main
         run: |
           git checkout origin/main
-          git switch -c "${BRANCH_NAME}"
+          git switch -c "${{ steps.branch_name.outputs.value }}"
 
       - name: Run formatters (black, ruff)
         run: |
@@ -144,14 +137,14 @@ jobs:
 
       - name: Push branch
         if: steps.commit.outputs.changed == 'true'
-        run: git push origin "${BRANCH_NAME}"
+        run: git push origin "${{ steps.branch_name.outputs.value }}"
 
       - name: Create Pull Request
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ env.BRANCH_NAME }}
+          branch: ${{ steps.branch_name.outputs.value }}
           base: main
           title: "自動整形: black/ruff による修正"
           body: |
