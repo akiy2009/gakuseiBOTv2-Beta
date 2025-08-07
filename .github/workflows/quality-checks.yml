@@ -79,14 +79,15 @@ jobs:
 
   auto-fix-and-report:
     runs-on: ubuntu-latest
-    name: Auto Fix & PR/Issue
     needs: quality-checks
+    name: Auto Fix & PR/Issue
 
     env:
       TIMESTAMP: ${{ github.run_id }}
+      BRANCH_NAME: auto/format-fix-${{ github.run_id }}
 
     steps:
-      - name: Checkout repository (full history)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -96,42 +97,38 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Download logs from previous job
+      - name: Install tools
+        run: |
+          pip install black ruff gh
+
+      - name: Download logs
         uses: actions/download-artifact@v4
         with:
           name: quality-logs
 
-      - name: Install formatters
-        run: pip install black ruff
+      - name: Delete existing branch if exists
+        run: |
+          git fetch origin
+          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}"; then
+            echo "Branch ${BRANCH_NAME} exists. Deleting..."
+            git push origin --delete "${BRANCH_NAME}"
+          fi
 
-      - name: Run Black (auto-format)
+      - name: Run formatters (black, ruff)
         run: |
           if [ -d "cogs" ]; then
             black cogs tests || true
-          else
-            echo "No target directory for black"
-          fi
-
-      - name: Run Ruff Fix (auto-fix)
-        run: |
-          if [ -d "cogs" ]; then
             ruff check cogs tests --fix || true
-          else
-            echo "No target directory for ruff"
           fi
 
-      - name: Configure git user
+      - name: Git config
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create unique branch from main
+      - name: Create branch
         run: |
-          UNIQUE_ID=$(head -c 8 /dev/urandom | base64 | tr -dc a-z0-9 | head -c 8)
-          BRANCH="auto/format-fix-${TIMESTAMP}-${UNIQUE_ID}"
-          git fetch origin main
-          git checkout -B "$BRANCH" origin/main
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          git checkout -B "${BRANCH_NAME}" origin/main
 
       - name: Commit changes if any
         id: commit
@@ -145,44 +142,40 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push branch if changes
+      - name: Push branch
         if: steps.commit.outputs.changed == 'true'
-        run: |
-          git push origin "$BRANCH"
+        run: git push origin "${BRANCH_NAME}"
 
-      - name: Create Pull Request for fixes
+      - name: Create Pull Request
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "style: 自動整形 (black/ruff)"
-          branch: ${{ env.BRANCH }}
+          branch: ${{ env.BRANCH_NAME }}
           base: main
           title: "自動整形: black/ruff による修正"
           body: |
             GitHub Actions によって自動で作成された PR です。
             - `black` によるコード整形
             - `ruff` による Lint 修正
+          commit-message: "style: 自動整形 (black/ruff)"
           labels: auto-fix, formatting
           delete-branch: false
           draft: false
 
-      - name: Setup GitHub CLI
-        uses: actions/setup-gh@v3
-
-      - name: Create Issues for Mypy / Audit / Ruff Errors
+      - name: Create GitHub Issues for static analysis errors
         if: steps.commit.outputs.changed == 'false'
         run: |
           mkdir -p .github/issues
-          cat ruff_output.txt | grep -v "All checks passed" > .github/issues/ruff.txt || true
-          cat mypy_output.txt | grep -v "Success:" > .github/issues/mypy.txt || true
+          grep -v "All checks passed" ruff_output.txt > .github/issues/ruff.txt || true
+          grep -v "Success:" mypy_output.txt > .github/issues/mypy.txt || true
           cat audit_output.txt > .github/issues/audit.txt || true
 
           for file in .github/issues/*.txt; do
             if [ -s "$file" ]; then
-              issue_title="Code Quality Issue: $(basename "$file" .txt)"
-              issue_body=$(cat "$file")
-              gh issue create --title "$issue_title" --body "$issue_body" --label "ci-auto"
+              title="Code Quality Issue: $(basename "$file" .txt)"
+              body=$(cat "$file")
+              gh issue create --title "$title" --body "$body" --label ci-auto
             fi
           done
         env:
