@@ -124,7 +124,6 @@ jobs:
             black cogs tests || true
             ruff check cogs tests --fix || true
           fi
-
       - name: Commit changes if any
         id: commit
         run: |
@@ -136,6 +135,10 @@ jobs:
             git commit -m "style: 自動整形による修正 (black/ruff)"
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
+
+      - name: Push branch (if commit changed)
+        if: steps.commit.outputs.changed == 'true'
+        run: git push origin "${{ steps.branch_name.outputs.value }}"
 
       - name: Create Pull Request (only if changed)
         if: steps.commit.outputs.changed == 'true'
@@ -153,6 +156,7 @@ jobs:
           labels: auto-fix, formatting
           delete-branch: false
           draft: false
+          push-to-fork: false
 
       - name: Create GitHub Issues for static analysis errors
         if: steps.commit.outputs.changed == 'false'
