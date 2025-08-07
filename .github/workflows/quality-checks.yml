@@ -88,7 +88,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # フル履歴取得
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -123,32 +123,23 @@ jobs:
         run: |
           BRANCH="auto/format-fix"
           git fetch origin main
-          if git rev-parse --verify $BRANCH; then
-            git branch -D $BRANCH
-          fi
+          git branch -D $BRANCH || true
           git checkout -b $BRANCH origin/main
 
       - name: Add changes and check diff
         id: commit
         run: |
-          git status
           git add .
-          git diff --cached || true
           if git diff --cached --quiet; then
             echo "No changes to commit"
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             git commit -m "style: 自動整形による修正 (black/ruff)"
             echo "changed=true" >> $GITHUB_OUTPUT
-            git log -1
           fi
 
       - name: Debug commit output
         run: echo "changed=${{ steps.commit.outputs.changed }}"
-
-      - name: Skip remote branch deletion and push normally
-        if: steps.commit.outputs.changed == 'true'
-        run: echo "Skipping remote branch deletion, pushing normally."
 
       - name: Push branch with fixes
         if: steps.commit.outputs.changed == 'true'
