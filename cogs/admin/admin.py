@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import os
 import glob
 
 DEVELOPER_ID = 1241366063858450485
