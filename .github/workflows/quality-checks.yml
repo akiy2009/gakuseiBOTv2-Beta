@@ -87,6 +87,7 @@ jobs:
     needs: quality-checks
 
     env:
+      # github.run_id は GitHub Actions の組み込み環境変数なのでこれでOK
       TIMESTAMP: ${{ github.run_id }}
 
     steps:
@@ -127,9 +128,10 @@ jobs:
       - name: Create unique branch from main
         run: |
           UNIQUE_ID=$(uuidgen | tr 'A-Z' 'a-z' | cut -d'-' -f1)
-          BRANCH="auto/format-fix-${{ github.run_id }}-${UNIQUE_ID}"
+          BRANCH="auto/format-fix-${TIMESTAMP}-${UNIQUE_ID}"
           git fetch origin main
-          git checkout -b "$BRANCH" origin/main
+          # -B は既存ブランチを上書きして切り替え
+          git checkout -B "$BRANCH" origin/main
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Commit changes if any
@@ -165,6 +167,9 @@ jobs:
           labels: auto-fix, formatting
           delete-branch: false
           draft: false
+
+      - name: Setup GitHub CLI
+        uses: cli/cli@v3
 
       - name: Create Issues for Mypy / Audit / Ruff Errors
         if: steps.commit.outputs.changed == 'false'
