@@ -137,7 +137,7 @@ jobs:
 
     steps:
       - name: Create Issue
-        uses: peter-evans/create-issue@v2
+        uses: peter-evans/create-issue@v4
         with:
           title: '[CI Warning] Lint/型チェック/テストでエラーが検出されました'
           body: |
