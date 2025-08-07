@@ -169,7 +169,7 @@ jobs:
           draft: false
 
       - name: Setup GitHub CLI
-        uses: cli/gh-action@v2
+        uses: cli/setup-gh@v2
         with:
           version: latest
 
