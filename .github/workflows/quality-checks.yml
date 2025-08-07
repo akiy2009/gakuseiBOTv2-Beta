@@ -87,7 +87,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -112,10 +111,10 @@ jobs:
         id: branch_name
         run: echo "value=auto/format-fix-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Create new branch from main (with tracking)
+      - name: Create new branch from main
         run: |
-          git fetch origin main
-          git checkout -b "${{ steps.branch_name.outputs.value }}" origin/main
+          git checkout origin/main
+          git switch -c "${{ steps.branch_name.outputs.value }}"
 
       - name: Run formatters (black, ruff)
         run: |
@@ -136,12 +135,12 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push branch (with upstream tracking)
+      - name: Push branch (only if changed)
         if: steps.commit.outputs.changed == 'true'
         run: |
           git push --set-upstream origin "${{ steps.branch_name.outputs.value }}"
 
-      - name: Create Pull Request
+      - name: Create Pull Request (only if changed)
         if: steps.commit.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
