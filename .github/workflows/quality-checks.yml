@@ -169,7 +169,9 @@ jobs:
           draft: false
 
       - name: Setup GitHub CLI
-        uses: cli/cli@v3
+        uses: cli/gh-action@v2
+        with:
+          version: latest
 
       - name: Create Issues for Mypy / Audit / Ruff Errors
         if: steps.commit.outputs.changed == 'false'
