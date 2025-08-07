@@ -113,8 +113,8 @@ jobs:
 
       - name: Create new branch from main
         run: |
-          git checkout origin/main
-          git switch -c "${{ steps.branch_name.outputs.value }}"
+          git fetch origin main
+          git checkout -b "${{ steps.branch_name.outputs.value }}" origin/main
 
       - name: Run formatters (black, ruff)
         run: |
@@ -135,10 +135,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push branch (only if changed)
-        if: steps.commit.outputs.changed == 'true'
-        run: |
-          git push --set-upstream origin "${{ steps.branch_name.outputs.value }}"
+      # ここで git push はしません。create-pull-request に任せる。
 
       - name: Create Pull Request (only if changed)
         if: steps.commit.outputs.changed == 'true'
