@@ -32,4 +32,4 @@ jobs:
           # Markdown形式を指定するなら --template-dir ではなく --renderer を使います
           # ただしpdoc14はMarkdown出力がデフォルトではないので
           # 下記のように --renderer markdown を明示します
-          pdoc --output-dir docs --renderer markdown ./cogs
+          pdoc --output-dir docs -- markdown ./cogs
