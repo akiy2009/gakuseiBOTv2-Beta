@@ -1,4 +1,4 @@
-name: Generate Markdown Docs for cogs
+name: Build and Deploy Sphinx Docs
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -19,17 +19,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pdoc
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install pdoc>=14.0.0
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Generate Markdown docs for ./cogs
+      - name: Build Sphinx docs
+        working-directory: docs
         run: |
-          mkdir -p docs
-          # pdoc v14以降は -o と --output-dir が同じ意味です
-          # Markdown形式を指定するなら --template-dir ではなく --renderer を使います
-          # ただしpdoc14はMarkdown出力がデフォルトではないので
-          # 下記のように --renderer markdown を明示します
-          pdoc --output-dir docs -- markdown ./cogs
+          make html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/build/html
