@@ -1,0 +1,33 @@
+name: Generate Markdown Docs for cogs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pdoc>=14.0.0
+          # もし依存関係があるなら requirements.txt を使う
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Generate Markdown documentation for ./cogs
+        run: |
+          mkdir -p docs
+          # ./cogs 配下だけをMarkdownに変換
+          pdoc --output-format markdown --output-dir docs ./cogs
