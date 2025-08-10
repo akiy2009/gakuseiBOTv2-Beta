@@ -19,15 +19,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install pdoc
         run: |
           pip install --upgrade pip
           pip install pdoc>=14.0.0
-          # もし依存関係があるなら requirements.txt を使う
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Generate Markdown documentation for ./cogs
+      - name: Generate Markdown docs for ./cogs
         run: |
           mkdir -p docs
-          # ./cogs 配下だけをMarkdownに変換
-          pdoc --output-format markdown --output-dir docs ./cogs
+          # pdoc v14以降は -o と --output-dir が同じ意味です
+          # Markdown形式を指定するなら --template-dir ではなく --renderer を使います
+          # ただしpdoc14はMarkdown出力がデフォルトではないので
+          # 下記のように --renderer markdown を明示します
+          pdoc --output-dir docs --renderer markdown ./cogs
