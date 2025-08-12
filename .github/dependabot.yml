@@ -1,8 +1,26 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/" # requirements.txt や setup.py のある場所
     schedule:
-      interval: "weekly"
+      interval: "weekly"  # 毎週チェック
+      day: "monday"       # 月曜日
+      time: "04:00"       # UTC（日本時間13:00）
     commit-message:
       prefix: "deps"
+      include: "scope"
+    allow:
+      - dependency-type: "all" # 間接依存も含めて全て更新
+    open-pull-requests-limit: 5 # PR数を制限（負荷軽減）
+    rebase-strategy: "auto"     # 自動で最新にリベース
+    labels:
+      - "dependencies"
+      - "python"
+    reviewers:
+      - "akiy2009" # 自動でレビュー依頼
+    assignees:
+      - "akiy2009"
+    ignore:
+      # 例: 特定バージョン以降は無視（破壊的変更回避用）
+      - dependency-name: "tensorflow"
+        versions: [">=3.0.0"]
