@@ -1,4 +1,4 @@
-name: Build and Deploy Sphinx Docs
+name: Build and Deploy Sphinx Docs & Markdown Docs
 
 on:
   push:
@@ -23,13 +23,31 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pdoc  # Markdown ドキュメント生成用
 
+      # Sphinx HTML ビルド
       - name: Build Sphinx docs
         working-directory: docs
         run: sphinx-build -b html source build/html
 
-      - name: Deploy to GitHub Pages
+      # cogs フォルダ → Markdown 出力
+      - name: Generate Markdown docs from /cogs
+        run: |
+          mkdir -p docs_markdown
+          pdoc --output-dir docs_markdown --format markdown cogs
+
+      # HTML ドキュメントを GitHub Pages にデプロイ
+      - name: Deploy HTML docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs/build/html
+
+      # Markdown ドキュメントも別ブランチに保存（任意）
+      - name: Deploy Markdown docs to gh-pages-markdown branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs_markdown
+          destination_dir: markdown
+          publish_branch: gh-pages-markdown
