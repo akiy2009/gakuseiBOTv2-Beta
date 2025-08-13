@@ -1,39 +1,31 @@
----
-
-## GitHub Actions (`.github/workflows/docs.yml`)yaml
-name: Build Docs
+name: Generate Markdown Docs
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  build:
+  generate-docs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
-          pip install sphinx myst-parser sphinx_rtd_theme
+          python -m pip install --upgrade pip
+          pip install pdoc
 
-      - name: Generate .rst from code
+      - name: Create docs folder if not exists
+        run: mkdir -p docs
+
+      - name: Generate Markdown docs
         run: |
-          sphinx-apidoc -o docs/ .
-
-      - name: Build Markdown docs
-        run: |
-          sphinx-build -b markdown docs docs/_build/markdown
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: markdown-docs
-          path: docs/_build/markdown
+          pdoc --output-format markdown --output-dir docs ./cogs
