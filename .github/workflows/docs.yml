@@ -1,42 +1,39 @@
-name: Build Markdown Docs from /cogs (Robust)
+---
+
+## GitHub Actions (`.github/workflows/docs.yml`)yaml
+name: Build Docs
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-markdown-docs:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || echo "No requirements.txt found or failed to install"
-          pip install --upgrade pdoc
+          pip install sphinx myst-parser sphinx_rtd_theme
 
-      - name: Show pdoc version
-        run: python -m pdoc --version
-
-      - name: Generate Markdown docs from /cogs if exists
+      - name: Generate .rst from code
         run: |
-          mkdir -p docs_markdown
-          if [ -d "cogs" ]; then
-            echo "'cogs' directory found. Generating Markdown docs..."
-            python -m pdoc --output-dir docs_markdown --format markdown cogs || echo "⚠️ pdoc generation failed but continuing workflow."
-          else
-            echo "'cogs' directory not found. Skipping Markdown generation."
-          fi
+          sphinx-apidoc -o docs/ .
 
-      - name: List generated docs_markdown files
-        run: ls -l docs_markdown || echo "No docs_markdown directory or files found."
+      - name: Build Markdown docs
+        run: |
+          sphinx-build -b markdown docs docs/_build/markdown
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-docs
+          path: docs/_build/markdown
