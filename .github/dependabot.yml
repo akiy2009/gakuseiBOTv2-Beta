@@ -21,6 +21,6 @@ updates:
     assignees:
       - "akiy2009"
     ignore:
-      
       - dependency-name: "tensorflow"
-        versions: [">=3.0.0"]
+        versions:
+          - ">=3.0.0"
