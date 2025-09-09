@@ -9,6 +9,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import io
+import subprocess  # ← 追加 Bun呼び出し用
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -34,7 +35,35 @@ def log_print(*args, **kwargs):
     print(*args, **kwargs)
     print(*args, **kwargs, file=log_buffer, flush=True)
 
+# ---------------------------
+# Bun / MySQL 共通関数
+# ---------------------------
+def run_bun(command: list):
+    """Bun で MySQL を操作"""
+    result = subprocess.run(
+        ["bun", "bun_db.js"] + command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    if result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return result.stdout
+    else:
+        log_print(f"[Bun Error] {' '.join(command)}: {result.stderr}")
+        return None
 
+def migrate_feature(feature: str):
+    """Cog起動時にテーブル自動作成"""
+    res = run_bun(["migrate", feature])
+    log_print(f"[DB Migration] {feature}: {res}")
+    return res
+
+# ---------------------------
+# Discord イベント / タスク
+# ---------------------------
 @bot.event
 async def on_ready():
     log_print(f"Logged in as {bot.user} (ID: {bot.user.id})")
@@ -53,7 +82,6 @@ async def on_ready():
     channel = bot.get_channel(REPORT_CHANNEL_ID)
     if channel and isinstance(channel, discord.TextChannel):
         content = log_buffer.getvalue()
-        # Discord Embedは最大4096文字なので分割送信
         chunk_size = 4000
         for i in range(0, len(content), chunk_size):
             embed = discord.Embed(
@@ -71,6 +99,9 @@ async def change_status():
         await bot.change_presence(activity=status)
         await asyncio.sleep(300)
 
+# ---------------------------
+# Cog ロード / Watchdog
+# ---------------------------
 def load_heavy_cog_list():
     if HEAVY_COGS_PATH.exists():
         with open(HEAVY_COGS_PATH, "r") as f:
@@ -83,22 +114,18 @@ def save_heavy_cog_list(cog_list):
 
 async def load_all_cogs():
     heavy_cogs = load_heavy_cog_list()
-
     cog_files = glob.glob("cogs/**/*.py", recursive=True)
     for file_path in cog_files:
         if file_path.endswith('__init__.py'):
             continue
-
         cog_module = file_path[:-3].replace('/', '.').replace('\\', '.')
-
         cog_name = cog_module.split('.')[-1]
         if cog_name in heavy_cogs:
             log_print(f"[Skip] Marked heavy cog: {cog_name}")
             continue
+        await load_cog_with_timing(cog_module, cog_name)
 
-        await load_cog_with_timing(cog_module)
-
-async def load_cog_with_timing(cog_module):
+async def load_cog_with_timing(cog_module, cog_name=None):
     start = time.time()
     try:
         await bot.load_extension(cog_module)
@@ -106,6 +133,9 @@ async def load_cog_with_timing(cog_module):
         log_print(f"[Load] {cog_module} loaded in {elapsed:.2f}s")
         if elapsed > HEAVY_THRESHOLD:
             log_print(f"[Warning] {cog_module} is slow to load ({elapsed:.2f}s)")
+        # Cog 名が分かれば自動でDBマイグレーション
+        if cog_name:
+            migrate_feature(cog_name)
     except commands.ExtensionAlreadyLoaded:
         try:
             await bot.reload_extension(cog_module)
@@ -113,6 +143,8 @@ async def load_cog_with_timing(cog_module):
             log_print(f"[Reload] {cog_module} reloaded in {elapsed:.2f}s")
             if elapsed > HEAVY_THRESHOLD:
                 log_print(f"[Warning] {cog_module} is slow to reload ({elapsed:.2f}s)")
+            if cog_name:
+                migrate_feature(cog_name)
         except Exception as e:
             log_print(f"[Error] Failed to reload {cog_module}: {e}")
     except Exception as e:
@@ -126,8 +158,9 @@ class CogChangeHandler(FileSystemEventHandler):
         if event.src_path.endswith('.py') and '__init__' not in event.src_path:
             relative_path = os.path.relpath(event.src_path, '.')
             cog_module = relative_path[:-3].replace('/', '.').replace('\\', '.')
+            cog_name = cog_module.split('.')[-1]
             log_print(f"[Watchdog] Change detected in {cog_module}")
-            asyncio.run_coroutine_threadsafe(load_cog_with_timing(cog_module), self.loop)
+            asyncio.run_coroutine_threadsafe(load_cog_with_timing(cog_module, cog_name), self.loop)
 
     def on_created(self, event):
         self.on_modified(event)
@@ -139,6 +172,9 @@ def start_watching(loop):
     observer.start()
     log_print("[Watchdog] Cog folder monitoring started.")
 
+# ---------------------------
+# 実行
+# ---------------------------
 if __name__ == "__main__":
     if not HEAVY_COGS_PATH.parent.exists():
         os.makedirs(HEAVY_COGS_PATH.parent)
