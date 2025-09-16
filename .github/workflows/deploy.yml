@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,6 +21,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/gakuseiBOT
-            git reset --hard
-            git pull origin main
+            git fetch --all
+            git reset --hard origin/main
+            docker compose pull
             docker compose up -d --build
