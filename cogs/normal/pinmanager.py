@@ -10,8 +10,6 @@ class PinManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f"✅ {self.bot.user} でログインしました")
-        # 各チャンネルの履歴をチェックして固定情報を復元
         for guild in self.bot.guilds:
             for channel in guild.text_channels:
                 try:
