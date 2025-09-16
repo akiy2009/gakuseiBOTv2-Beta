@@ -20,7 +20,7 @@ class PinManager(commands.Cog):
                             continue
                         embed = msg.embeds[0]
                         # タイトルで固定メッセージか判定
-                        if embed.title == "📌 固定メッセージ":
+                        if embed.title == "固定メッセージ":
                             self.pinned_messages[channel.id] = msg.id
                             break
                 except Exception:
@@ -31,7 +31,7 @@ class PinManager(commands.Cog):
     # ==============================
     # 固定メッセージ作成（コンテキストメニュー）
     # ==============================
-    @app_commands.context_menu(name="📌 このメッセージを固定表示")
+    @app_commands.context_menu(name="このメッセージを固定表示")
     async def pin_message(self, interaction: discord.Interaction, message: discord.Message):
         channel = message.channel
 
@@ -51,7 +51,7 @@ class PinManager(commands.Cog):
         if message.attachments:
             file_urls = "\n".join([att.url for att in message.attachments])
             embed_files = discord.Embed(
-                title="📎 添付ファイル",
+                title="添付ファイル",
                 description=file_urls,
                 color=discord.Color.green()
             )
@@ -73,7 +73,7 @@ class PinManager(commands.Cog):
     # ==============================
     # 固定解除（コンテキストメニュー）
     # ==============================
-    @app_commands.context_menu(name="❌ 固定解除")
+    @app_commands.context_menu(name="固定解除")
     async def unpin_message(self, interaction: discord.Interaction, message: discord.Message):
         channel = message.channel
 
@@ -84,9 +84,9 @@ class PinManager(commands.Cog):
             except discord.NotFound:
                 pass
             del self.pinned_messages[channel.id]
-            await interaction.response.send_message("❌ 固定を解除しました。", ephemeral=True)
+            await interaction.response.send_message("固定を解除しました。", ephemeral=True)
         else:
-            await interaction.response.send_message("⚠️ 固定されていません。", ephemeral=True)
+            await interaction.response.send_message("固定されていません。", ephemeral=True)
 
     # ==============================
     # 新規メッセージで固定再配置
