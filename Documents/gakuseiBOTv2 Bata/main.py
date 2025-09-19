@@ -14,12 +14,25 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
-PREFIX = os.getenv("PREFIX")
+# 環境変数から設定を読み込み
+PREFIX = os.getenv("PREFIX", "/")
 bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
-HEAVY_THRESHOLD = 1.5  # 秒
+# 設定値（環境変数優先）
+HEAVY_THRESHOLD = float(os.getenv("HEAVY_THRESHOLD", "1.5"))  # 秒
 HEAVY_COGS_PATH = Path("./data/heavy_cogs.json")
-REPORT_CHANNEL_ID = 1291296590950301753  # ログ送信チャンネルID
+
+# レポートチャンネル（環境変数から取得）
+REPORT_CHANNEL_ID = os.getenv("REPORT_CHANNEL_ID")
+if REPORT_CHANNEL_ID:
+    try:
+        REPORT_CHANNEL_ID = int(REPORT_CHANNEL_ID)
+    except ValueError:
+        print("Warning: REPORT_CHANNEL_ID is not a valid integer")
+        REPORT_CHANNEL_ID = None
+else:
+    print("Warning: REPORT_CHANNEL_ID not set in environment variables")
+    REPORT_CHANNEL_ID = None
 
 status_list = [
     discord.Game("動作中..."),
@@ -50,8 +63,12 @@ async def on_ready():
     start_watching(asyncio.get_event_loop())
     change_status.start()
 
-    # 起動時ログをEmbedで送信
-    channel = bot.get_channel(REPORT_CHANNEL_ID)
+    # 起動時ログをEmbedで送信（チャンネルIDが設定されている場合のみ）
+    if REPORT_CHANNEL_ID:
+        channel = bot.get_channel(REPORT_CHANNEL_ID)
+    else:
+        channel = None
+    
     if channel and isinstance(channel, discord.TextChannel):
         content = log_buffer.getvalue()
         # Discord Embedは最大4096文字なので分割送信

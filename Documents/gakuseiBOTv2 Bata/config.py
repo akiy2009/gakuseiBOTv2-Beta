@@ -1,2 +1,4 @@
-TOKEN = "MTI4OTU3MTk4MjMwMzY5MDc1Mg.GKiPcz.KjRg1Eps2qfbweH7iVLdNqwX-ZrdD-GjPhX7lE"
+# config.py - 非機密設定のみ
+# 機密情報（トークン等）は環境変数または.envファイルで管理してください
+
 PREFIX = "/"
