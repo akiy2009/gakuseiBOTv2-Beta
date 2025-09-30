@@ -1,7 +1,27 @@
-version: 2
+version: 2 
+
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"               # requirements.txt
+  - package-ecosystem: "pip"     
+    directory: "/"                  
     schedule:
-      interval: "weekly"
+      interval: "weekly"            
+      day: "monday"        
+      time: "04:00"              
+    commit-message:
+      prefix: "deps"            
+      include: "scope"         
+    open-pull-requests-limit: 5     
+    rebase-strategy: "auto"        
+    labels:
+      - "dependencies"         
+      - "python"
+    reviewers:
+      - "akiy2009"         
+    assignees:
+      - "akiy2009"           
+    ignore:
+      - dependency-name: "tensorflow" 
+        versions:
+          - ">=3.0.0"
+
     
