@@ -1,26 +1,26 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/update_model"
+    directory: "/"        
     schedule:
-      interval: "weekly"  
-      day: "monday"       
-      time: "04:00"      
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
     commit-message:
       prefix: "deps"
       include: "scope"
     allow:
-      - dependency-type: "all" 
-    open-pull-requests-limit: 5 
-    rebase-strategy: "auto"     
+      - dependency-type: "all"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     labels:
       - "dependencies"
       - "python"
-    reviewers:
-      - "akiy2009" 
-    assignees:
-      - "akiy2009"
-    ignore:
-      - dependency-name: "tensorflow"
-        versions:
-          - ">=3.0.0"
+    # reviewers:
+    #   - "akiy2009"                  
+    # assignees:
+    #   - "akiy2009"
+    # ignore:
+    #   - dependency-name: "tensorflow"
+    #     versions:
+    #       - ">=3.0.0"
