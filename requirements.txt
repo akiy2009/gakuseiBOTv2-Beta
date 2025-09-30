@@ -13,4 +13,4 @@ watchdog>=2.0.0
 pytz>=2022.0
 
 # Wikipedia検索
-wikipediaapi>=0.5.4
+wikipediaapi>=0.5.2,<0.6
