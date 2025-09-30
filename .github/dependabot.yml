@@ -4,3 +4,4 @@ updates:
     directory: "/"               # requirements.txt
     schedule:
       interval: "weekly"
+    
