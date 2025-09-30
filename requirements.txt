@@ -8,17 +8,9 @@ psutil>=5.9.0
 # URL短縮・Web関連
 requests>=2.28.0
 
-# データベース（必要に応じて）
-# sqlite3  # Python標準ライブラリ
-
 # ユーティリティ
 watchdog>=2.0.0
 pytz>=2022.0
 
 # Wikipedia検索
 wikipediaapi>=0.5.4
-
-# 開発・テスト用（オプション）
-# pytest>=7.0.0
-# black>=22.0.0
-# flake8>=5.0.0
