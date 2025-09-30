@@ -28,13 +28,15 @@ jobs:
 
       # 4. docs フォルダを作成
       - name: Create docs folder if not exists
-        run: mkdir -p docs-auto
+        run: mkdir -p docs
 
       # 5. Markdown ドキュメントを生成
       - name: Generate Markdown docs
         run: |
-          pdoc --output-format markdown --output-dir docs ./cogs
+          pdoc --markdown --output-dir docs ./cogs
 
+
+      # 6. docs フォルダをコミットしてプッシュ
       - name: Commit and push docs
         run: |
           git config --global user.name "github-actions[bot]"
