@@ -1,3 +1,74 @@
+F401 [*] `subprocess` imported but unused
+  --> cogs/admin/jishaku.py:9:8
+   |
+ 7 | import psutil
+ 8 | import asyncio
+ 9 | import subprocess
+   |        ^^^^^^^^^^
+10 | import traceback
+11 | import io
+   |
+help: Remove unused import: `subprocess`
+
+F401 [*] `traceback` imported but unused
+  --> cogs/admin/jishaku.py:10:8
+   |
+ 8 | import asyncio
+ 9 | import subprocess
+10 | import traceback
+   |        ^^^^^^^^^
+11 | import io
+12 | import contextlib
+   |
+help: Remove unused import: `traceback`
+
+F401 [*] `inspect` imported but unused
+  --> cogs/admin/jishaku.py:14:8
+   |
+12 | import contextlib
+13 | import ast
+14 | import inspect
+   |        ^^^^^^^
+15 | from typing import Optional, Any
+16 | import time
+   |
+help: Remove unused import: `inspect`
+
+F401 [*] `typing.Optional` imported but unused
+  --> cogs/admin/jishaku.py:15:20
+   |
+13 | import ast
+14 | import inspect
+15 | from typing import Optional, Any
+   |                    ^^^^^^^^
+16 | import time
+17 | import datetime
+   |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+  --> cogs/admin/jishaku.py:15:30
+   |
+13 | import ast
+14 | import inspect
+15 | from typing import Optional, Any
+   |                              ^^^
+16 | import time
+17 | import datetime
+   |
+help: Remove unused import
+
+F401 [*] `datetime.datetime` imported but unused
+ --> cogs/error.py:3:22
+  |
+1 | import discord
+2 | from discord.ext import commands
+3 | from datetime import datetime
+  |                      ^^^^^^^^
+4 | import time
+  |
+help: Remove unused import: `datetime.datetime`
+
 F821 Undefined name `aaa`
  --> cogs/tests/aa_test.py:1:1
   |
@@ -5,4 +76,5 @@ F821 Undefined name `aaa`
   | ^^^
   |
 
-Found 1 error.
+Found 7 errors.
+[*] 6 fixable with the `--fix` option.
