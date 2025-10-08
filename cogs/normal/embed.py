@@ -9,7 +9,7 @@ class EmbedModal(Modal):
 
         self.title_input = TextInput(
             label="タイトル",
-            placeholder="埋め込みのタイトルを入力してください",
+            placeholder="埋め込みメッセージのタイトルを入力してください",
             max_length=256,
             required=True
         )
@@ -18,7 +18,7 @@ class EmbedModal(Modal):
         self.description_input = TextInput(
             label="メッセージ",
             style=discord.TextStyle.paragraph,
-            placeholder="埋め込みの内容を入力してください",
+            placeholder="埋め込みメッセージの内容を入力してください",
             max_length=2048,
             required=True
         )
