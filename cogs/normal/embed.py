@@ -5,11 +5,11 @@ from discord.ui import Modal, TextInput
 
 class EmbedModal(Modal):
     def __init__(self):
-        super().__init__(title="Embedを作成")
+        super().__init__(title="埋め込みを作成")
 
         self.title_input = TextInput(
             label="タイトル",
-            placeholder="Embedのタイトルを入力してください",
+            placeholder="埋め込みメッセージのタイトルを入力してください",
             max_length=256,
             required=True
         )
@@ -18,7 +18,7 @@ class EmbedModal(Modal):
         self.description_input = TextInput(
             label="メッセージ",
             style=discord.TextStyle.paragraph,
-            placeholder="Embedの内容を入力してください",
+            placeholder="埋め込みメッセージの内容を入力してください",
             max_length=2048,
             required=True
         )
@@ -72,7 +72,7 @@ class EmbedCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="embed", description="Embedメッセージをモーダルから作成します")
+    @app_commands.command(name="embed", description="埋め込みメッセージを作成します")
     async def createembed(self, interaction: discord.Interaction):
         await interaction.response.send_modal(EmbedModal())
 
