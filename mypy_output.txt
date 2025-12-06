@@ -1,5 +1,8 @@
 cogs/test_sample.py:10: error: Argument 1 to "greet" has incompatible type "int"; expected "str"  [arg-type]
 cogs/tests/aa_test.py:1: error: Name "aaa" is not defined  [name-defined]
+cogs/normal/wiki.py:4: error: Cannot find implementation or library stub for module named "wikipedia"  [import-not-found]
+cogs/normal/timestanp.py:5: error: Library stubs not installed for "pytz"  [import-untyped]
+cogs/normal/timestanp.py:5: note: Hint: "python3 -m pip install types-pytz"
 cogs/normal/rolepanel.py:30: error: Item "None" of "Guild | None" has no attribute "get_role"  [union-attr]
 cogs/normal/rolepanel.py:33: error: Item "User" of "User | Member" has no attribute "roles"  [union-attr]
 cogs/normal/rolepanel.py:34: error: Item "User" of "User | Member" has no attribute "add_roles"  [union-attr]
@@ -25,6 +28,13 @@ cogs/normal/feedback.py:35: error: Item "None" of "ClientUser | None" has no att
 cogs/normal/botinfo.py:7: error: Incompatible types in assignment (expression has type "Bot", variable has type "Command[BOTInfo, [], Any]")  [assignment]
 cogs/normal/botinfo.py:11: error: "Command[BOTInfo, [], Any]" has no attribute "guilds"  [attr-defined]
 cogs/normal/botinfo.py:12: error: "Command[BOTInfo, [], Any]" has no attribute "guilds"  [attr-defined]
+cogs/admin/jishaku.py:7: error: Library stubs not installed for "psutil"  [import-untyped]
+cogs/admin/jishaku.py:7: note: Hint: "python3 -m pip install types-psutil"
+cogs/admin/jishaku.py:7: note: (or run "mypy --install-types" to install all missing stub packages)
+cogs/admin/jishaku.py:7: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+cogs/admin/jishaku.py:23: error: Incompatible types in assignment (expression has type "int", variable has type "str | None")  [assignment]
+cogs/admin/jishaku.py:124: error: Incompatible types in assignment (expression has type Module, variable has type "Expression")  [assignment]
+cogs/admin/jishaku.py:249: error: Item "None" of "ClientUser | None" has no attribute "id"  [union-attr]
 cogs/admin/announce.py:7: error: Need type annotation for "title_input"  [var-annotated]
 cogs/admin/announce.py:12: error: Need type annotation for "content_input"  [var-annotated]
 cogs/admin/admin.py:13: error: Return type "Coroutine[Any, Any, Any]" of "cog_check" incompatible with return type "bool" in supertype "discord.ext.commands.cog.Cog"  [override]
@@ -37,4 +47,4 @@ cogs/admin/admin.py:72: error: "Bot" has no attribute "load_failures"  [attr-def
 cogs/admin/admin.py:73: error: "Bot" has no attribute "skipped_cogs"  [attr-defined]
 cogs/admin/admin.py:74: error: "Bot" has no attribute "skipped_cogs"  [attr-defined]
 cogs/admin/admin.py:77: error: "Bot" has no attribute "load_failures"  [attr-defined]
-Found 39 errors in 11 files (checked 17 source files)
+Found 45 errors in 14 files (checked 20 source files)
