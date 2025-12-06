@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-DEVELOPER_ID = 1241366063858450485  # ←あなたのユーザーIDに置き換えてください
+DEVELOPER_ID = 1241366063858450485
 
 class BroadcastModal(discord.ui.Modal, title="📢 お知らせ送信フォーム"):
     title_input = discord.ui.TextInput(
@@ -86,4 +86,5 @@ class BroadcastModalCog(commands.Cog):
             print(f"[❌ Slash Command Sync Error] {e}")
 
 async def setup(bot: commands.Bot):
+
     await bot.add_cog(BroadcastModalCog(bot))
