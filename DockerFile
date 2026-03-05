@@ -1,0 +1,37 @@
+# ---------- Base Image ----------
+FROM python:3.11-slim
+
+# ---------- Environment ----------
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# ---------- Work Directory ----------
+WORKDIR /app
+
+# ---------- System Dependencies ----------
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------- Python Dependencies ----------
+COPY requirements.txt .
+
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
+
+# ---------- App Source ----------
+COPY . .
+
+# ---------- Runtime Directories ----------
+RUN mkdir -p /app/data \
+    && mkdir -p /app/cogs
+
+# ---------- Security (optional user) ----------
+RUN useradd -m botuser
+USER botuser
+
+# ---------- Start Bot ----------
+CMD ["python", "main.py"]
