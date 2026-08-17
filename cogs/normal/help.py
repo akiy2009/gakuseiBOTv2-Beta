@@ -1,7 +1,8 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
-from discord.ui import View, Select
+from discord.ext import commands
+from discord.ui import Select, View
+
 
 class HelpSelect(Select):
     def __init__(self, commands_list):

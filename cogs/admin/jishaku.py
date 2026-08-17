@@ -1,20 +1,17 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
-import os
-import sys
-import platform
-import psutil
-import asyncio
-import subprocess
-import traceback
-import io
-import contextlib
 import ast
-import inspect
-from typing import Optional, Any
-import time
+import asyncio
+import contextlib
 import datetime
+import io
+import os
+import platform
+import sys
+import time
+
+import discord
+import psutil
+from discord import app_commands
+from discord.ext import commands
 
 # セキュリティのための環境変数取得
 DEVELOPER_ID = os.getenv('DEVELOPER_ID')

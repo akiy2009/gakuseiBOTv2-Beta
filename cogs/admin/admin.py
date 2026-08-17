@@ -1,7 +1,8 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
 import glob
+
+import discord
+from discord import app_commands
+from discord.ext import commands
 
 DEVELOPER_ID = 1241366063858450485
 
