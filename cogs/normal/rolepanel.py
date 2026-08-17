@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+
 class RoleSelect(discord.ui.Select):
     def __init__(self, role_dict: dict[str, discord.Role]):
         self.role_dict = role_dict
