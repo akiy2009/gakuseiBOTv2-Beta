@@ -1,8 +1,722 @@
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/admin/admin.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | import glob
+  | |___________^
+5 |
+6 |   DEVELOPER_ID = 1241366063858450485
+  |
+help: Organize imports
+  |
+1 + import glob
+2 +
+3 | import discord
+  - from discord.ext import commands
+4 | from discord import app_commands
+  - import glob
+5 + from discord.ext import commands
+6 |
+  |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/admin/admin.py:76:16
+   |
+74 |                     self.bot.skipped_cogs.remove(cog)
+75 |
+76 |         except Exception as e:
+   |                ^^^^^^^^^
+77 |             self.bot.load_failures[cog] = str(e)
+78 |             await interaction.response.send_message(f"❌ `{cog}` のリロードに失敗しました。\n```{e}```", ephemeral=True)
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/admin/announce.py:56:20
+   |
+54 |                 else:
+55 |                     skipped += 1
+56 |             except Exception as e:
+   |                    ^^^^^^^^^
+57 |                 print(f"❌ 送信失敗 ({guild.name}): {e}")
+58 |                 skipped += 1
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/admin/announce.py:85:16
+   |
+83 |             synced = await self.bot.tree.sync()
+84 |             print(f"[🔃 Slash Command Sync] {len(synced)} commands")
+85 |         except Exception as e:
+   |                ^^^^^^^^^
+86 |             print(f"[❌ Slash Command Sync Error] {e}")
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> cogs/admin/jishaku.py:1:1
+   |
+ 1 | / import discord
+ 2 | | from discord.ext import commands
+ 3 | | from discord import app_commands
+ 4 | | import os
+ 5 | | import sys
+ 6 | | import platform
+ 7 | | import psutil
+ 8 | | import asyncio
+ 9 | | import subprocess
+10 | | import traceback
+11 | | import io
+12 | | import contextlib
+13 | | import ast
+14 | | import inspect
+15 | | from typing import Optional, Any
+16 | | import time
+17 | | import datetime
+   | |_______________^
+18 |
+19 |   # セキュリティのための環境変数取得
+   |
+help: Organize imports
+   |
+   - import discord
+   - from discord.ext import commands
+   - from discord import app_commands
+   - import os
+   - import sys
+   - import platform
+   - import psutil
+1  + import ast
+2  | import asyncio
+   - import subprocess
+   - import traceback
+   - import io
+3  | import contextlib
+   - import ast
+4  + import datetime
+5  | import inspect
+   - from typing import Optional, Any
+6  + import io
+7  + import os
+8  + import platform
+9  + import subprocess
+10 + import sys
+11 | import time
+   - import datetime
+12 + import traceback
+13 + from typing import Any, Optional
+14 +
+15 + import discord
+16 + import psutil
+17 + from discord import app_commands
+18 + from discord.ext import commands
+19 |
+   |
+
+F401 [*] `subprocess` imported but unused
+  --> cogs/admin/jishaku.py:9:8
+   |
+ 7 | import psutil
+ 8 | import asyncio
+ 9 | import subprocess
+   |        ^^^^^^^^^^
+10 | import traceback
+11 | import io
+   |
+help: Remove unused import: `subprocess`
+  |
+8 | import asyncio
+  - import subprocess
+9 | import traceback
+  |
+
+F401 [*] `traceback` imported but unused
+  --> cogs/admin/jishaku.py:10:8
+   |
+ 8 | import asyncio
+ 9 | import subprocess
+10 | import traceback
+   |        ^^^^^^^^^
+11 | import io
+12 | import contextlib
+   |
+help: Remove unused import: `traceback`
+   |
+9  | import subprocess
+   - import traceback
+10 | import io
+   |
+
+F401 [*] `inspect` imported but unused
+  --> cogs/admin/jishaku.py:14:8
+   |
+12 | import contextlib
+13 | import ast
+14 | import inspect
+   |        ^^^^^^^
+15 | from typing import Optional, Any
+16 | import time
+   |
+help: Remove unused import: `inspect`
+   |
+13 | import ast
+   - import inspect
+14 | from typing import Optional, Any
+   |
+
+F401 [*] `typing.Optional` imported but unused
+  --> cogs/admin/jishaku.py:15:20
+   |
+13 | import ast
+14 | import inspect
+15 | from typing import Optional, Any
+   |                    ^^^^^^^^
+16 | import time
+17 | import datetime
+   |
+help: Remove unused import
+   |
+14 | import inspect
+   - from typing import Optional, Any
+15 | import time
+   |
+
+F401 [*] `typing.Any` imported but unused
+  --> cogs/admin/jishaku.py:15:30
+   |
+13 | import ast
+14 | import inspect
+15 | from typing import Optional, Any
+   |                              ^^^
+16 | import time
+17 | import datetime
+   |
+help: Remove unused import
+   |
+14 | import inspect
+   - from typing import Optional, Any
+15 | import time
+   |
+
+S102 Use of `exec` detected
+   --> cogs/admin/jishaku.py:126:21
+    |
+124 |                 parsed = ast.parse(code, mode='exec')
+125 |                 with contextlib.redirect_stdout(stdout):
+126 |                     exec(compile(parsed, '<repl>', 'exec'), env)
+    |                     ^^^^
+127 |                 result = None
+128 |             except SyntaxError as e:
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:134:20
+    |
+132 |                 )
+133 |                 return
+134 |             except Exception as e:
+    |                    ^^^^^^^^^
+135 |                 await interaction.followup.send(
+136 |                     f"❌ 実行エラー:\n```py\n{type(e).__name__}: {e}\n```", 
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:140:16
+    |
+138 |                 )
+139 |                 return
+140 |         except Exception as e:
+    |                ^^^^^^^^^
+141 |             await interaction.followup.send(
+142 |                 f"❌ 実行エラー:\n```py\n{type(e).__name__}: {e}\n```", 
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:226:16
+    |
+224 |             await interaction.followup.send(embed=embed, ephemeral=True)
+225 |             
+226 |         except Exception as e:
+    |                ^^^^^^^^^
+227 |             await interaction.followup.send(
+228 |                 f"❌ シェル実行エラー:\n```\n{type(e).__name__}: {e}\n```", 
+    |
+
+RUF059 Unpacked variable `stderr` is never used
+   --> cogs/admin/jishaku.py:303:21
+    |
+301 |                 stderr=asyncio.subprocess.PIPE
+302 |             )
+303 |             stdout, stderr = await process.communicate()
+    |                     ^^^^^^
+304 |             
+305 |             if process.returncode != 0:
+    |
+help: Prefix it with an underscore or any other dummy variable pattern
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:338:16
+    |
+336 |             await interaction.followup.send(embed=embed, ephemeral=True)
+337 |             
+338 |         except Exception as e:
+    |                ^^^^^^^^^
+339 |             await interaction.followup.send(f"❌ Git情報の取得に失敗: {e}", ephemeral=True)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:351:16
+    |
+349 |             await self.bot.load_extension(extension)
+350 |             await interaction.response.send_message(f"✅ `{extension}` をロードしました。", ephemeral=True)
+351 |         except Exception as e:
+    |                ^^^^^^^^^
+352 |             await interaction.response.send_message(f"❌ ロードに失敗: {e}", ephemeral=True)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:368:16
+    |
+366 |             await self.bot.unload_extension(extension)
+367 |             await interaction.response.send_message(f"✅ `{extension}` をアンロードしました。", ephemeral=True)
+368 |         except Exception as e:
+    |                ^^^^^^^^^
+369 |             await interaction.response.send_message(f"❌ アンロードに失敗: {e}", ephemeral=True)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> cogs/admin/jishaku.py:381:16
+    |
+379 |             await self.bot.reload_extension(extension)
+380 |             await interaction.response.send_message(f"🔄 `{extension}` をリロードしました。", ephemeral=True)
+381 |         except Exception as e:
+    |                ^^^^^^^^^
+382 |             await interaction.response.send_message(f"❌ リロードに失敗: {e}", ephemeral=True)
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/error.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from datetime import datetime
+4 | | import time
+  | |___________^
+5 |
+6 |   class ErrorHandler(commands.Cog):
+  |
+help: Organize imports
+  |
+1 + import time
+2 + from datetime import datetime
+3 +
+4 | import discord
+5 | from discord.ext import commands
+  - from datetime import datetime
+  - import time
+6 |
+7 +
+8 | class ErrorHandler(commands.Cog):
+  |
+
+F401 [*] `datetime.datetime` imported but unused
+ --> cogs/error.py:3:22
+  |
+1 | import discord
+2 | from discord.ext import commands
+3 | from datetime import datetime
+  |                      ^^^^^^^^
+4 | import time
+  |
+help: Remove unused import: `datetime.datetime`
+  |
+2 | from discord.ext import commands
+  - from datetime import datetime
+3 | import time
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/about.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+  | |________________________________^
+4 |
+5 |   class About(commands.Cog):
+  |
+help: Organize imports
+  |
+1 | import discord
+2 + from discord import app_commands
+3 | from discord.ext import commands
+  - from discord import app_commands
+4 |
+5 +
+6 | class About(commands.Cog):
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/botinfo.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+  | |________________________________^
+4 |
+5 |   class BOTInfo(commands.Cog):
+  |
+help: Organize imports
+  |
+1 | import discord
+2 + from discord import app_commands
+3 | from discord.ext import commands
+  - from discord import app_commands
+4 |
+5 +
+6 | class BOTInfo(commands.Cog):
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/embed.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | from discord.ui import Modal, TextInput
+  | |_______________________________________^
+5 |
+6 |   class EmbedModal(Modal):
+  |
+help: Organize imports
+  |
+1 | import discord
+2 + from discord import app_commands
+3 | from discord.ext import commands
+  - from discord import app_commands
+4 | from discord.ui import Modal, TextInput
+5 |
+6 +
+7 | class EmbedModal(Modal):
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/feedback.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | from discord.ui import Modal, TextInput
+  | |_______________________________________^
+5 |
+6 |   FEEDBACK_CHANNEL_ID = 1301185017619415092  # 送信先チャンネルID
+  |
+help: Organize imports
+  |
+1 | import discord
+2 + from discord import app_commands
+3 | from discord.ext import commands
+  - from discord import app_commands
+4 | from discord.ui import Modal, TextInput
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/help.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | from discord.ui import View, Select
+  | |___________________________________^
+5 |
+6 |   class HelpSelect(Select):
+  |
+help: Organize imports
+  |
+1 | import discord
+  - from discord.ext import commands
+2 | from discord import app_commands
+  - from discord.ui import View, Select
+3 + from discord.ext import commands
+4 + from discord.ui import Select, View
+5 +
+6 |
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/ping.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | import aiohttp
+5 | | import time
+  | |___________^
+6 |
+7 |   class PingBOTandWEB(commands.Cog):
+  |
+help: Organize imports
+  |
+1 + import time
+2 +
+3 + import aiohttp
+4 | import discord
+5 + from discord import app_commands
+6 | from discord.ext import commands
+  - from discord import app_commands
+  - import aiohttp
+  - import time
+7 |
+8 +
+9 | class PingBOTandWEB(commands.Cog):
+  |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/normal/ping.py:26:20
+   |
+24 |                     site_latency = round((end_time - start_time) * 1000)
+25 |                     status = response.status
+26 |             except Exception:
+   |                    ^^^^^^^^^
+27 |                 site_latency = None
+28 |                 status = "接続失敗"
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/pinmanager.py:1:1
+  |
+1 | / import discord
+2 | | from discord import app_commands
+3 | | from discord.ext import commands
+  | |________________________________^
+4 |
+5 |   class PinManager(commands.Cog):
+  |
+help: Organize imports
+  |
+4 |
+5 +
+6 | class PinManager(commands.Cog):
+  |
+
+S112 `try`-`except`-`continue` detected, consider logging the exception
+  --> cogs/normal/pinmanager.py:24:17
+   |
+22 |                               self.pinned_messages[channel.id] = msg.id
+23 |                               break
+24 | /                 except Exception:
+25 | |                     continue
+   | |____________________________^
+26 |           await self.bot.tree.sync()
+27 |           print("✅ アプリコマンド同期完了")
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/normal/pinmanager.py:24:24
+   |
+22 |                             self.pinned_messages[channel.id] = msg.id
+23 |                             break
+24 |                 except Exception:
+   |                        ^^^^^^^^^
+25 |                     continue
+26 |         await self.bot.tree.sync()
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/report.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | from discord.ui import Modal, TextInput
+  | |_______________________________________^
+5 |
+6 |   REPORT_CHANNEL_ID = 1291296590950301753  # 運営用の報告受信チャンネルID
+  |
+help: Organize imports
+  |
+1 | import discord
+2 + from discord import app_commands
+3 | from discord.ext import commands
+  - from discord import app_commands
+4 | from discord.ui import Modal, TextInput
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/rolepanel.py:1:1
+  |
+1 | / import discord
+2 | | from discord import app_commands
+3 | | from discord.ext import commands
+  | |________________________________^
+4 |
+5 |   class RoleSelect(discord.ui.Select):
+  |
+help: Organize imports
+  |
+4 |
+5 +
+6 | class RoleSelect(discord.ui.Select):
+  |
+
+C401 Unnecessary generator (rewrite as a set comprehension)
+  --> cogs/normal/rolepanel.py:24:19
+   |
+22 |         member = interaction.user
+23 |         selected_ids = set(map(int, self.values))
+24 |         all_ids = set(role.id for role in self.role_dict.values())
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 |
+26 |         added = []
+   |
+help: Rewrite as a set comprehension
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/shorten.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | import aiohttp
+5 | | import re
+  | |_________^
+6 |
+7 |   class URLShortener(commands.Cog):
+  |
+help: Organize imports
+  |
+1 + import re
+2 +
+3 + import aiohttp
+4 | import discord
+5 + from discord import app_commands
+6 | from discord.ext import commands
+  - from discord import app_commands
+  - import aiohttp
+  - import re
+7 |
+8 +
+9 | class URLShortener(commands.Cog):
+  |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+  --> cogs/normal/shorten.py:23:13
+   |
+22 |           try:
+23 | /             async with aiohttp.ClientSession() as session:
+24 | |                 async with session.get(api_url) as resp:
+   | |________________________________________________________^
+25 |                       if resp.status != 200:
+26 |                           await interaction.followup.send("⚠ URL短縮サービスに接続できませんでした。", ephemeral=True)
+   |
+help: Combine `with` statements
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/normal/shorten.py:31:16
+   |
+30 |             await interaction.followup.send(f"🔗 短縮URL: {short_url}")
+31 |         except Exception as e:
+   |                ^^^^^^^^^
+32 |             await interaction.followup.send(f"⚠ エラーが発生しました: {e}", ephemeral=True)
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/timestanp.py:1:1
+  |
+1 | / import discord
+2 | | from discord import app_commands
+3 | | from discord.ext import commands
+4 | | from datetime import datetime
+5 | | import pytz
+  | |___________^
+6 |
+7 |   class set_timestanp(commands.Cog):
+  |
+help: Organize imports
+  |
+1 + from datetime import datetime
+2 +
+3 | import discord
+4 + import pytz
+5 | from discord import app_commands
+6 | from discord.ext import commands
+  - from datetime import datetime
+  - import pytz
+7 |
+8 +
+9 | class set_timestanp(commands.Cog):
+  |
+
+DTZ007 Naive datetime constructed using `datetime.datetime.strptime()` without %z
+  --> cogs/normal/timestanp.py:25:18
+   |
+23 |             # pytzで日本時間(JST)に変換
+24 |             JST = pytz.timezone('Asia/Tokyo')
+25 |             dt = datetime.strptime(date_str, "%Y/%m/%d/%H:%M")
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+26 |             dt = JST.localize(dt)
+27 |             unix_time = int(dt.timestamp())
+   |
+help: Call `.replace(tzinfo=<timezone>)` or `.astimezone()` to convert to an aware datetime
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> cogs/normal/wiki.py:1:1
+  |
+1 | / import discord
+2 | | from discord.ext import commands
+3 | | from discord import app_commands
+4 | | import wikipedia
+5 | | import re
+  | |_________^
+6 |
+7 |   # Wikipediaを日本語に設定
+  |
+help: Organize imports
+  |
+1 + import re
+2 +
+3 | import discord
+  - from discord.ext import commands
+  - from discord import app_commands
+4 | import wikipedia
+  - import re
+5 + from discord import app_commands
+6 + from discord.ext import commands
+7 |
+  |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> cogs/normal/wiki.py:48:16
+   |
+46 |         except wikipedia.PageError:
+47 |             await interaction.followup.send("該当するページが見つかりませんでした。")
+48 |         except Exception as e:
+   |                ^^^^^^^^^
+49 |             await interaction.followup.send(f"⚠ エラーが発生しました: {e}")
+   |
+
+UP009 [*] UTF-8 encoding declaration is unnecessary
+ --> cogs/test_sample.py:1:1
+  |
+1 | # coding: utf-8
+  | ^^^^^^^^^^^^^^^
+help: Remove unnecessary coding comment
+  |
+  - # coding: utf-8
+1 |
+  |
+
+B018 Found useless expression. Either assign it to a variable or remove it.
+ --> cogs/tests/aa_test.py:1:1
+  |
+1 | aaa
+  | ^^^
+
 F821 Undefined name `aaa`
  --> cogs/tests/aa_test.py:1:1
   |
 1 | aaa
   | ^^^
-  |
 
-Found 1 error.
+Found 44 errors.
+[*] 22 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

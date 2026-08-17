@@ -1,4 +1,3 @@
-# coding: utf-8
 
 
 def greet(name:str)->str:  # ← スペースがなく black で修正される
