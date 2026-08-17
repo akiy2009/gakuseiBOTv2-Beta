@@ -3,7 +3,7 @@ discord.py>=2.0.0
 aiohttp>=3.8.0
 
 # Jishaku（開発者コマンド）用ライブラリ
-psutil>=5.9.0
+psutil>=7.2.2
 
 # URL短縮・Web関連
 requests>=2.28.0
