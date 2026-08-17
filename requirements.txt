@@ -1,6 +1,6 @@
 # Discord Bot基本ライブラリ
 discord.py>=2.0.0
-aiohttp>=3.8.0
+aiohttp>=3.14.3
 
 # Jishaku（開発者コマンド）用ライブラリ
 psutil>=5.9.0
