@@ -1,4 +1,0 @@
-Name       Version ID               Fix Versions
----------- ------- ---------------- ------------
-setuptools 65.5.0  PYSEC-2022-43012 65.5.1
-setuptools 65.5.0  PYSEC-2025-49    78.1.1

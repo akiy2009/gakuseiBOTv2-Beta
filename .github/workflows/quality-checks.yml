@@ -28,8 +28,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
@@ -50,3 +49,67 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+  pr-status-report:
+    name: PR status report
+    if: always() && github.event_name == 'pull_request'
+    needs: quality-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Publish or update PR status comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CHECK_RESULT: ${{ needs.quality-checks.result }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          {
+            echo "<!-- gakuseibot-pr-status -->"
+            echo "## gakuseiBOT — CI status"
+            echo
+            case "$CHECK_RESULT" in
+              success) echo "**Overall:** ✅ All configured checks passed" ;;
+              failure) echo "**Overall:** ❌ One or more checks failed" ;;
+              cancelled) echo "**Overall:** ⚪ Checks were cancelled" ;;
+              *) echo "**Overall:** ⚠️ Status: `$CHECK_RESULT`" ;;
+            esac
+            echo
+            echo "- **Commit:** `$COMMIT_SHA`"
+            echo "- **Workflow:** [View run]($RUN_URL)"
+            echo
+            echo "### Check details"
+            gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs" --paginate --jq '
+              .jobs[]
+              | select(.name != "PR status report")
+              | "- **" + .name + "** — " + (
+                  if .conclusion == "success" then "✅ passed"
+                  elif .conclusion == "failure" then "❌ failed"
+                  elif .conclusion == "cancelled" then "⚪ cancelled"
+                  elif .status == "in_progress" then "⏳ running"
+                  else "⚠️ " + (.conclusion // .status)
+                  end
+                )
+            '
+            echo
+            echo "_This comment is updated automatically when the PR checks run._"
+          } > pr-status.md
+
+          COMMENT_ID="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate --jq '.[] | select(.body | contains("<!-- gakuseibot-pr-status -->")) | .id' | tail -n 1)"
+
+          if [[ -n "$COMMENT_ID" ]]; then
+            gh api --method PATCH "repos/$GH_REPO/issues/comments/$COMMENT_ID" --input <(jq -n --rawfile body pr-status.md '{body: $body}')
+            echo "Updated existing PR status comment."
+          else
+            gh api --method POST "repos/$GH_REPO/issues/$PR_NUMBER/comments" --input <(jq -n --rawfile body pr-status.md '{body: $body}')
+            echo "Created PR status comment."
+          fi

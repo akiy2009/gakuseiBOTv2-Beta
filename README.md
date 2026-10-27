@@ -42,7 +42,7 @@ python -m pip install -r requirements.txt
 
 ### 3. 環境変数を設定
 
-`.env.example` を `.env` にコピーし、少なくとも `DISCORD_TOKEN` を実際の Bot token に変更してください。運営向け機能を使う場合は `DEVELOPER_ID`、`REPORT_CHANNEL_ID`、`FEEDBACK_CHANNEL_ID` も設定してください。
+`.env.example` を `.env` にコピーし、少なくとも `DISCORD_TOKEN` を実際の Bot token に変更してください。運営向け機能を使う場合は、各機能に対応する ID も設定してください。
 
 Windows PowerShell:
 
@@ -68,7 +68,7 @@ python main.py
 
 起動後、コンソールにログインとスラッシュコマンド同期の結果が表示されます。同期に失敗した場合はエラーログと Bot の権限設定を確認してください。
 
-## 設定
+## 主な設定
 
 | 変数 | 用途 |
 | --- | --- |
@@ -76,7 +76,7 @@ python main.py
 | `PREFIX` | prefix command の接頭辞（既定値: `/`） |
 | `DEVELOPER_ID` | 開発者向けコマンドの使用者 ID |
 | `REPORT_CHANNEL_ID` | 起動ログ・報告の送信先として使用するチャンネル ID |
-| `FEEDBACK_CHANNEL_ID` | フィードバックの送信先チャンネル ID |
+| `FEEDBACK_CHANNEL_ID` | フィードバック送信先チャンネル ID |
 | `HEAVY_THRESHOLD` | Cog 読み込み時間の警告閾値（秒、既定値: `1.5`） |
 
 設定変更後は Bot を再起動してください。
@@ -84,8 +84,13 @@ python main.py
 ## 開発時のチェック
 
 ```bash
-python -m compileall -q main.py cogs py-module
+python -m pip install -r requirements.txt
+python -m pip install pytest
+python -m pip check
+python -m compileall -q main.py cogs
 python -m pytest -q
 ```
+
+GitHub Actions では Python 3.10 / 3.11 / 3.12 で依存関係・構文・テストを確認します。PR の会話欄にはチェック状況の要約が自動投稿され、再実行時は既存の要約コメントが更新されます。
 
 不具合の報告や質問は GitHub Issues または公式サイトからお願いします。
