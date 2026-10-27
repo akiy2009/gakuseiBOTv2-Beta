@@ -1,6 +1,6 @@
 # gakuseiBOT v2 (Beta)
 
-gakuseiBOT v2 は、学習時間の管理やリマインダーなどを提供する Discord Bot です。
+gakuseiBOT v2 は、学習支援やリマインダー、サーバー運営向けの機能を提供する Discord Bot です。
 
 公式サイト: https://gakuseibot.com
 
@@ -8,89 +8,73 @@ gakuseiBOT v2 は、学習時間の管理やリマインダーなどを提供す
 
 - Python 3.10 以上
 - Discord Bot application と Bot token
-- Discord Developer Portal で、プロジェクトが利用する privileged intents を有効化していること
-- Bot を招待する際は `bot` と `applications.commands` の OAuth2 scopes を指定すること
+- Discord Developer Portal で、利用する privileged intents を有効化していること
+- Bot を招待する際は OAuth2 scopes に `bot` と `applications.commands` を指定すること
 
-## セットアップ
-
-### 1. リポジトリを取得
+## ローカルで起動する
 
 ```bash
 git clone https://github.com/akiy2009/gakuseiBOTv2-Beta.git
 cd gakuseiBOTv2-Beta
-```
-
-### 2. 仮想環境を作成して依存関係をインストール
-
-Windows PowerShell:
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-macOS / Linux:
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-```
-
-### 3. 環境変数を設定
-
-`.env.example` を `.env` にコピーし、少なくとも `DISCORD_TOKEN` を実際の Bot token に変更してください。運営向け機能を使う場合は、各機能に対応する ID も設定してください。
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-macOS / Linux:
-
-```bash
 cp .env.example .env
 ```
 
-トークンをソースコードや GitHub に書き込まないでください。`.env` は Git の追跡対象外です。
+Windows PowerShell では仮想環境を `py -3 -m venv .venv` で作成し、`.\.venv\Scripts\Activate.ps1` を実行してから、`Copy-Item .env.example .env` で設定ファイルを作成してください。
 
-### 4. 起動
-
-リポジトリのルートディレクトリで実行します。
+`.env` の `DISCORD_TOKEN` を実際の Bot token に変更してから起動します。
 
 ```bash
 python main.py
 ```
 
-起動後、コンソールにログインとスラッシュコマンド同期の結果が表示されます。同期に失敗した場合はエラーログと Bot の権限設定を確認してください。
+詳しい手順、環境変数、権限設定、運用方法は [ドキュメント](docs/index.md) を参照してください。
 
-## 主な設定
+## Docker Compose で起動する
 
-| 変数 | 用途 |
-| --- | --- |
-| `DISCORD_TOKEN` | Bot token（必須） |
-| `PREFIX` | prefix command の接頭辞（既定値: `/`） |
-| `DEVELOPER_ID` | 開発者向けコマンドの使用者 ID |
-| `REPORT_CHANNEL_ID` | 起動ログ・報告の送信先として使用するチャンネル ID |
-| `FEEDBACK_CHANNEL_ID` | フィードバック送信先チャンネル ID |
-| `HEAVY_THRESHOLD` | Cog 読み込み時間の警告閾値（秒、既定値: `1.5`） |
+Docker Engine と Docker Compose v2 がインストールされた環境で、`.env` を用意してから実行します。
 
-設定変更後は Bot を再起動してください。
+```bash
+docker compose up -d --build
+docker compose logs -f bot
+```
+
+停止する場合:
+
+```bash
+docker compose down
+```
+
+実行データは名前付き volume に保存されます。Bot token はイメージに含めず、Compose の環境変数として渡してください。
+
+## HSS 時間割連携（任意）
+
+[HSS-Project/HSS.py](https://github.com/HSS-Project/HSS.py) を使った時間割表示機能を任意で有効化できます。HSS ライブラリ本体をこのリポジトリに複製せず、追加依存関係として利用します。
+
+1. Python 3.11 以上の環境で `python -m pip install -r requirements-hss.txt` を実行します。
+2. `.env` に `HSS_API_TOKEN`、`HSS_SCHOOL_ID`、`HSS_GRADE`、`HSS_CLASS` を設定します。
+3. Bot を再起動し、Discord の `/timetable` コマンドを使います。
+
+HSS 連携は未設定でも通常の Bot 起動を妨げません。詳細は [HSS 連携ガイド](docs/study/hss-integration.md) を確認してください。
 
 ## 開発時のチェック
 
 ```bash
-python -m pip install -r requirements.txt
-python -m pip install pytest
 python -m pip check
 python -m compileall -q main.py cogs
+python -m pip install pytest
 python -m pytest -q
 ```
 
-GitHub Actions では Python 3.10 / 3.11 / 3.12 で依存関係・構文・テストを確認します。PR の会話欄にはチェック状況の要約が自動投稿され、再実行時は既存の要約コメントが更新されます。
+ドキュメントのビルド:
 
-不具合の報告や質問は GitHub Issues または公式サイトからお願いします。
+```bash
+python -m pip install -r requirements-docs.txt
+sphinx-build -W --keep-going -b html docs build/manual-docs
+pdoc --output-dir build/api-docs cogs
+```
+
+GitHub Actions では Python 3.10 / 3.11 / 3.12 で依存関係・構文・テストを確認し、ドキュメントをビルドします。PR の会話欄にはチェック状況が自動投稿され、再実行時は既存の要約コメントが更新されます。

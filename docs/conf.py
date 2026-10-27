@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath(".."))
+
+project = "gakuseiBOT v2"
+copyright = "gakuseiBOT contributors"
+author = "gakuseiBOT contributors"
 
 extensions = [
     "myst_parser",
@@ -9,6 +15,15 @@ extensions = [
     "sphinx.ext.napoleon",
 ]
 
+myst_enable_extensions = ["colon_fence"]
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+root_doc = "index"
+master_doc = "index"
+html_theme = "sphinx_rtd_theme"
+exclude_patterns = ["_build", "build", "source"]
 autodoc_mock_imports = [
     "discord",
     "aiohttp",
@@ -19,8 +34,3 @@ autodoc_mock_imports = [
     "psutil",
     "requests",
 ]
-
-myst_enable_extensions = ["linkify", "colon_fence"]
-html_theme = "sphinx_rtd_theme"
-source_suffix = [".rst", ".md"]
-master_doc = "index"

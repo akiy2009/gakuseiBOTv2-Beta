@@ -1,0 +1,3 @@
+# Optional HSS timetable integration.
+# HSS-Project/HSS.py currently relies on typing.NotRequired, so use Python 3.11+.
+HSS.py>=2.0.0; python_version >= "3.11"

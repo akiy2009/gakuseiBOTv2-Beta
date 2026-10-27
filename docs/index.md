@@ -1,13 +1,25 @@
 # gakuseiBOT v2 ドキュメント
 
-このディレクトリには、gakuseiBOT v2 の補足ドキュメントを配置します。
-Bot のセットアップ、環境変数、起動方法、CI の確認手順はリポジトリ直下の README を参照してください。
+このドキュメントは、ローカル開発から本番運用までの手順と、HSS 時間割連携の実装をまとめたものです。
 
 ```{toctree}
 :maxdepth: 2
-:caption: 目次
+:caption: ガイド
 
+README
+getting-started
+configuration
+architecture
+operations
+development
 gc/rule
-study/api-refetence
-study/py-model
+study/hss-integration
+study/api-reference
 ```
+
+## クイックリンク
+
+- [セットアップ](getting-started.md)
+- [設定一覧](configuration.md)
+- [HSS 時間割連携](study/hss-integration.md)
+- [テストとドキュメントのビルド](development.md)

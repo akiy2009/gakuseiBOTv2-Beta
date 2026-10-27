@@ -47,7 +47,10 @@ jobs:
           script: |
             set -euo pipefail
             cd ~/gakuseiBOT
+            test -f .env || { echo "Missing ~/gakuseiBOT/.env; create it securely before deployment." >&2; exit 1; }
             git fetch origin main
             git reset --hard origin/main
-            docker compose pull
-            docker compose up -d --build
+            test -f Dockerfile
+            test -f compose.yaml
+            docker compose up -d --build --remove-orphans
+            docker compose ps
