@@ -200,6 +200,12 @@ class RolePanelCog(commands.Cog):
                 ephemeral=True,
             )
             return
+        if not bot_member.guild_permissions.manage_roles:
+            await interaction.response.send_message(
+                "Bot に「ロールの管理」権限がありません。",
+                ephemeral=True,
+            )
+            return
 
         roles = sorted(
             (

@@ -1,10 +1,6 @@
 gakuseiBOT v2 API documentation
 =================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: API modules:
-
 .. automodule:: cogs.normal.about
    :members:
    :undoc-members:
