@@ -62,7 +62,11 @@ class HelpCog(commands.Cog):
     )
     async def help(self, interaction: discord.Interaction) -> None:
         all_commands = sorted(
-            self.bot.tree.get_commands(),
+            (
+                command
+                for command in self.bot.tree.get_commands()
+                if isinstance(command, app_commands.Command)
+            ),
             key=lambda command: command.name,
         )
         selectable_commands = all_commands[:25]
@@ -85,7 +89,7 @@ class HelpCog(commands.Cog):
 
         await interaction.response.send_message(
             embed=embed,
-            view=HelpView(selectable_commands),
+            view=HelpView(selectable_commands) if selectable_commands else None,
             ephemeral=True,
         )
 

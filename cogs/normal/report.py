@@ -54,9 +54,12 @@ class ReportModal(Modal):
             )
             return
 
-        embed = discord.Embed(title="ユーザー報告", color=discord.Color.red())
+        embed = discord.Embed(
+            title="ユーザー報告",
+            description=self.reason_input.value,
+            color=discord.Color.red(),
+        )
         embed.add_field(name="対象ユーザーID", value=target_id, inline=False)
-        embed.add_field(name="内容", value=self.reason_input.value, inline=False)
         embed.set_footer(text=f"報告者ID: {interaction.user.id}")
 
         try:

@@ -10,6 +10,13 @@ _UNSAFE_ROLE_PERMISSIONS = (
     "manage_channels",
     "manage_webhooks",
     "manage_messages",
+    "manage_nicknames",
+    "manage_events",
+    "manage_threads",
+    "manage_expressions",
+    "create_guild_expressions",
+    "view_audit_log",
+    "moderate_members",
     "mention_everyone",
     "kick_members",
     "ban_members",
@@ -33,7 +40,7 @@ def _is_safe_self_assignable(role: discord.Role, bot_member: discord.Member) -> 
 
 class RoleSelect(discord.ui.Select):
     def __init__(self, roles: list[discord.Role]):
-        self.roles_by_id = {role.id: role for role in roles}
+        self.roles_by_id = {role.id: role for role in roles[:25]}
         options = [
             discord.SelectOption(label=role.name[:100], value=str(role.id))
             for role in roles[:25]
@@ -69,7 +76,7 @@ class RoleSelect(discord.ui.Select):
         removed: list[str] = []
         failed: list[str] = []
 
-        for role_id, role in self.roles_by_id.items():
+        for role_id in self.roles_by_id:
             current_role = guild.get_role(role_id)
             if current_role is None or not _is_safe_self_assignable(current_role, bot_member):
                 continue
@@ -99,7 +106,7 @@ class RoleSelect(discord.ui.Select):
 
 class PanelRole(discord.ui.Select):
     def __init__(self, roles: list[discord.Role], description: str):
-        self.roles_by_id = {role.id: role for role in roles}
+        self.roles_by_id = {role.id: role for role in roles[:25]}
         self.description_text = description
         options = [
             discord.SelectOption(
@@ -137,7 +144,7 @@ class PanelRole(discord.ui.Select):
             )
             return
 
-        view = discord.ui.View(timeout=None)
+        view = discord.ui.View(timeout=900)
         view.add_item(RoleSelect(selected_roles))
         try:
             await channel.send(
