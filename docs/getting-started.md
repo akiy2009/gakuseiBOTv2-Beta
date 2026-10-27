@@ -65,11 +65,21 @@ python main.py
 Docker Engine と Docker Compose v2 を用意し、リポジトリのルートで `.env` を設定してから実行します。
 
 ```bash
+docker compose config --quiet
 docker compose up -d --build
 docker compose logs -f bot
 ```
 
-停止は `docker compose down`、再ビルドは `docker compose up -d --build` です。Bot の実行データは名前付き volume に保存されます。HSS の追加依存関係は標準イメージには含まれないため、HSS 連携が必要な運用では Dockerfile にその依存関係を追加するか、管理されたカスタムイメージを作成してください。
+停止は `docker compose down`、再ビルドは `docker compose up -d --build` です。Bot の実行データは名前付き volume に保存されます。
+
+## 6. HSS 時間割機能（任意）
+
+HSS 時間割機能には Python 3.11 以上と HSS API token が必要です。
+
+- ローカル: `python -m pip install -r requirements-hss.txt`
+- Docker Compose: `.env` の `INSTALL_HSS=true` に変更し、`docker compose up -d --build` でイメージを再ビルドします。
+
+次に `HSS_API_TOKEN`、`HSS_SCHOOL_ID`、`HSS_GRADE`、`HSS_CLASS` を設定して Bot を再起動し、Discord の `/timetable` を実行します。詳細は [HSS 連携ガイド](study/hss-integration.md) を参照してください。
 
 ## 関連ドキュメント
 

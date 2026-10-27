@@ -2,6 +2,8 @@ services:
   bot:
     build:
       context: .
+      args:
+        INSTALL_HSS: ${INSTALL_HSS:-false}
     env_file:
       - .env
     restart: unless-stopped

@@ -45,7 +45,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 10m
           script: |
-            set -euo pipefail
+            set -eu
             cd ~/gakuseiBOT
             test -f .env || { echo "Missing ~/gakuseiBOT/.env; create it securely before deployment." >&2; exit 1; }
             git fetch origin main

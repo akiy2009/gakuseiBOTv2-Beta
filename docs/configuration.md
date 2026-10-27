@@ -22,6 +22,7 @@
 
 | 変数 | 必須（HSS を使う場合） | 用途 |
 | --- | --- | --- |
+| `INSTALL_HSS` | いいえ（Docker のみ） | `true` にすると Docker イメージのビルド時に HSS.py を追加インストールします。既定値は `false`。 |
 | `HSS_API_TOKEN` | はい | HSS API application token。秘密情報として管理します。 |
 | `HSS_SCHOOL_ID` | はい | 表示対象の学校 ID（正の整数）。 |
 | `HSS_GRADE` | はい | 表示対象の学年（正の整数）。 |

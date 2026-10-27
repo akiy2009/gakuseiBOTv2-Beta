@@ -8,9 +8,11 @@ WORKDIR /app
 
 RUN useradd --system --uid 10001 --create-home bot
 
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt requirements-hss.txt /app/
+ARG INSTALL_HSS=false
 RUN python -m pip install --upgrade pip \
-    && python -m pip install -r /app/requirements.txt
+    && python -m pip install -r /app/requirements.txt \
+    && if [ "$INSTALL_HSS" = "true" ]; then python -m pip install -r /app/requirements-hss.txt; fi
 
 COPY --chown=bot:bot . /app/
 RUN mkdir -p /app/data && chown -R bot:bot /app

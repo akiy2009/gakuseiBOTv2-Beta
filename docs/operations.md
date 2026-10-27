@@ -11,6 +11,8 @@ docker compose ps
 docker compose logs --tail=100 bot
 ```
 
+HSS 時間割機能を Docker で使う場合は、`.env` の `INSTALL_HSS=true` に変更してから `docker compose up -d --build` を実行し、HSS.py をイメージへ追加します。このオプションはビルド時の設定です。通常の Bot のみを使う場合は `false` のままで構いません。
+
 更新時はレビュー済みの commit を取得してから `docker compose up -d --build --remove-orphans` を実行します。停止は `docker compose down` です。Bot の実行データは `bot-data` という名前付き volume に保持されます。`docker compose down -v` は保存データを消去するため、必要性を確認してから実行してください。
 
 ## GitHub Actions による VPS デプロイ

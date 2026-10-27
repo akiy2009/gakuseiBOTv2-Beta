@@ -23,7 +23,7 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Windows PowerShell では仮想環境を `py -3 -m venv .venv` で作成し、`.\.venv\Scripts\Activate.ps1` を実行してから、`Copy-Item .env.example .env` で設定ファイルを作成してください。
+Windows PowerShell では仮想環境を `py -3 -m venv .venv` で作成し、`\.venv\Scripts\Activate.ps1` を実行してから、`Copy-Item .env.example .env` で設定ファイルを作成してください。
 
 `.env` の `DISCORD_TOKEN` を実際の Bot token に変更してから起動します。
 
@@ -54,9 +54,10 @@ docker compose down
 
 [HSS-Project/HSS.py](https://github.com/HSS-Project/HSS.py) を使った時間割表示機能を任意で有効化できます。HSS ライブラリ本体をこのリポジトリに複製せず、追加依存関係として利用します。
 
-1. Python 3.11 以上の環境で `python -m pip install -r requirements-hss.txt` を実行します。
-2. `.env` に `HSS_API_TOKEN`、`HSS_SCHOOL_ID`、`HSS_GRADE`、`HSS_CLASS` を設定します。
-3. Bot を再起動し、Discord の `/timetable` コマンドを使います。
+- ローカル実行: Python 3.11 以上の環境で `python -m pip install -r requirements-hss.txt` を実行します。
+- Docker Compose: `.env` に `INSTALL_HSS=true` を設定し、`docker compose up -d --build` を実行します。この設定はビルド時に HSS.py をイメージへインストールします。
+- `.env` に `HSS_API_TOKEN`、`HSS_SCHOOL_ID`、`HSS_GRADE`、`HSS_CLASS` を設定し、Bot を再起動します。
+- Discord で `/timetable` コマンドから曜日を選択します。
 
 HSS 連携は未設定でも通常の Bot 起動を妨げません。詳細は [HSS 連携ガイド](docs/study/hss-integration.md) を確認してください。
 
