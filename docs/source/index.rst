@@ -1,14 +1,26 @@
-Welcome to YourProjectName's documentation!
-===========================================
+gakuseiBOT v2 API documentation
+=================================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: API modules:
 
-.. automodule:: cogs.test_sample
+.. automodule:: cogs.normal.about
    :members:
    :undoc-members:
-   :show-inheritance:
 
-.. automodule:: cogs.music
+.. automodule:: cogs.normal.help
    :members:
+   :undoc-members:
+
+.. automodule:: cogs.normal.report
+   :members:
+   :undoc-members:
+
+.. automodule:: cogs.normal.feedback
+   :members:
+   :undoc-members:
+
+.. automodule:: cogs.admin.admin
+   :members:
+   :undoc-members:

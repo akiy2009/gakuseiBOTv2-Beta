@@ -1,14 +1,22 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))  # リポジトリルートをパスに追加
+
+sys.path.insert(0, os.path.abspath("../.."))
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',  # Googleスタイル・NumPyスタイルのdocstring対応
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
 ]
 
-# ここに依存しているけどimportできないモジュール名をリストアップする
-autodoc_mock_imports = ["discord", "some_other_module", "numpy"]
-
-# テーマ（ReadTheDocsテーマ推奨）
-html_theme = 'sphinx_rtd_theme'
+autodoc_mock_imports = [
+    "discord",
+    "aiohttp",
+    "watchdog",
+    "dotenv",
+    "wikipedia",
+    "pytz",
+    "psutil",
+    "requests",
+]
+html_theme = "sphinx_rtd_theme"
+master_doc = "index"
