@@ -6,17 +6,15 @@ from discord.ext import commands
 from discord.ui import Modal, TextInput
 
 
-def _channel_id_from_env(name: str, fallback: int) -> int:
+def _channel_id_from_env(name: str) -> int | None:
     raw_value = os.getenv(name, "").strip()
     if not raw_value:
-        return fallback
+        return None
     try:
-        return int(raw_value)
+        value = int(raw_value)
     except ValueError:
-        return fallback
-
-
-REPORT_CHANNEL_ID = _channel_id_from_env("REPORT_CHANNEL_ID", 1291296590950301753)
+        return None
+    return value if value > 0 else None
 
 
 class ReportModal(Modal):
@@ -40,19 +38,31 @@ class ReportModal(Modal):
         self.add_item(self.reason_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        channel_id = _channel_id_from_env("REPORT_CHANNEL_ID")
+        if channel_id is None:
+            await interaction.response.send_message(
+                "報告先が未設定です。運営に設定を確認するようお知らせください。",
+                ephemeral=True,
+            )
+            return
+
+        target_id = self.user_id_input.value.strip()
+        if not target_id.isdecimal() or not (15 <= len(target_id) <= 20):
+            await interaction.response.send_message(
+                "対象ユーザーIDは、Discord の数値IDで入力してください。",
+                ephemeral=True,
+            )
+            return
+
         embed = discord.Embed(title="ユーザー報告", color=discord.Color.red())
-        embed.add_field(
-            name="対象ユーザーID",
-            value=self.user_id_input.value,
-            inline=False,
-        )
+        embed.add_field(name="対象ユーザーID", value=target_id, inline=False)
         embed.add_field(name="内容", value=self.reason_input.value, inline=False)
         embed.set_footer(text=f"報告者ID: {interaction.user.id}")
 
         try:
-            channel = self.bot.get_channel(REPORT_CHANNEL_ID)
+            channel = self.bot.get_channel(channel_id)
             if channel is None:
-                channel = await self.bot.fetch_channel(REPORT_CHANNEL_ID)
+                channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, (discord.TextChannel, discord.Thread)):
                 raise TypeError("報告先がテキストチャンネルではありません")
             await channel.send(embed=embed)

@@ -6,17 +6,15 @@ from discord.ext import commands
 from discord.ui import Modal, TextInput
 
 
-def _channel_id_from_env(name: str, fallback: int) -> int:
+def _channel_id_from_env(name: str) -> int | None:
     raw_value = os.getenv(name, "").strip()
     if not raw_value:
-        return fallback
+        return None
     try:
-        return int(raw_value)
+        value = int(raw_value)
     except ValueError:
-        return fallback
-
-
-FEEDBACK_CHANNEL_ID = _channel_id_from_env("FEEDBACK_CHANNEL_ID", 1301185017619415092)
+        return None
+    return value if value > 0 else None
 
 
 class FeedbackModal(Modal):
@@ -38,6 +36,14 @@ class FeedbackModal(Modal):
         self.add_item(self.content_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        channel_id = _channel_id_from_env("FEEDBACK_CHANNEL_ID")
+        if channel_id is None:
+            await interaction.response.send_message(
+                "フィードバック送信先が未設定です。運営に設定を確認するようお知らせください。",
+                ephemeral=True,
+            )
+            return
+
         embed = discord.Embed(
             title=self.title_input.value,
             description=self.content_input.value,
@@ -54,9 +60,9 @@ class FeedbackModal(Modal):
             )
 
         try:
-            channel = self.bot.get_channel(FEEDBACK_CHANNEL_ID)
+            channel = self.bot.get_channel(channel_id)
             if channel is None:
-                channel = await self.bot.fetch_channel(FEEDBACK_CHANNEL_ID)
+                channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, (discord.TextChannel, discord.Thread)):
                 raise TypeError("フィードバック先がテキストチャンネルではありません")
             await channel.send(embed=embed)
