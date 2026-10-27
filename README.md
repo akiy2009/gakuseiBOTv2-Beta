@@ -23,7 +23,7 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Windows PowerShell では仮想環境を `py -3 -m venv .venv` で作成し、`\.venv\Scripts\Activate.ps1` を実行してから、`Copy-Item .env.example .env` で設定ファイルを作成してください。
+Windows PowerShell では仮想環境を `py -3 -m venv .venv` で作成し、`.\.venv\Scripts\Activate.ps1` を実行してから、`Copy-Item .env.example .env` で設定ファイルを作成してください。
 
 `.env` の `DISCORD_TOKEN` を実際の Bot token に変更してから起動します。
 
