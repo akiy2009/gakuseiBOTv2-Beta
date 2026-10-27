@@ -1,47 +1,91 @@
 # gakuseiBOT v2 (Beta)
 
----
+gakuseiBOT v2 は、学習時間の管理やリマインダーなどを提供する Discord Bot です。
 
-## 概要
+公式サイト: https://gakuseibot.com
 
-**gakuseiBOT v2** は、学生向けの学習支援Discordボットのベータ版です。  
-学習時間の管理やリマインダー、ランキング機能を備え、  
-モチベーション維持や効率的な学習をサポートします。
+## 動作環境
 
-公式サイト: [https://gakuseibot.com](https://gakuseibot.com)
+- Python 3.10 以上
+- Discord Bot application と Bot token
+- Discord Developer Portal で、プロジェクトが利用する privileged intents を有効化していること
+- Bot を招待する際は `bot` と `applications.commands` の OAuth2 scopes を指定すること
 
----
+## セットアップ
 
-## 主な機能
-
-- 学習時間の開始・終了管理コマンド
-- 勉強時間の自動集計とランキング表示
-- 管理者向けリマインダー設定・管理機能
-- 日々の学習進捗を見える化するダッシュボード連携予定
-- 直感的な操作が可能なCogベースのモジュール設計
-
----
-
-## 動作環境・前提
-
-- Python 3.10 以上推奨
-- discord.py v2.x (Slashコマンド対応)
-- 事前にDiscord BOTトークン取得済み
-- 必要なDiscord Bot権限設定済み（メッセージ送信、スラッシュコマンド利用など）
-
----
-
-## セットアップ手順
-
-1. **リポジトリをクローン**
+### 1. リポジトリを取得
 
 ```bash
 git clone https://github.com/akiy2009/gakuseiBOTv2-Beta.git
-cd gakuseiBOT_v2
+cd gakuseiBOTv2-Beta
 ```
 
-※ 本プロジェクトはベータ版のため、不具合が生じる可能性があります。ご了承ください。  
+### 2. 仮想環境を作成して依存関係をインストール
 
-連絡先・サポート  
-公式サイト: https://gakuseibot.com  
-メール: akiy2009_dev@outlook.jp
+Windows PowerShell:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+macOS / Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 3. 環境変数を設定
+
+`.env.example` を `.env` にコピーし、少なくとも `DISCORD_TOKEN` を実際の Bot token に変更してください。運営向け機能を使う場合は `DEVELOPER_ID`、`REPORT_CHANNEL_ID`、`FEEDBACK_CHANNEL_ID` も設定してください。
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS / Linux:
+
+```bash
+cp .env.example .env
+```
+
+トークンをソースコードや GitHub に書き込まないでください。`.env` は Git の追跡対象外です。
+
+### 4. 起動
+
+リポジトリのルートディレクトリで実行します。
+
+```bash
+python main.py
+```
+
+起動後、コンソールにログインとスラッシュコマンド同期の結果が表示されます。同期に失敗した場合はエラーログと Bot の権限設定を確認してください。
+
+## 設定
+
+| 変数 | 用途 |
+| --- | --- |
+| `DISCORD_TOKEN` | Bot token（必須） |
+| `PREFIX` | prefix command の接頭辞（既定値: `/`） |
+| `DEVELOPER_ID` | 開発者向けコマンドの使用者 ID |
+| `REPORT_CHANNEL_ID` | 起動ログ・報告の送信先として使用するチャンネル ID |
+| `FEEDBACK_CHANNEL_ID` | フィードバックの送信先チャンネル ID |
+| `HEAVY_THRESHOLD` | Cog 読み込み時間の警告閾値（秒、既定値: `1.5`） |
+
+設定変更後は Bot を再起動してください。
+
+## 開発時のチェック
+
+```bash
+python -m compileall -q main.py cogs py-module
+python -m pytest -q
+```
+
+不具合の報告や質問は GitHub Issues または公式サイトからお願いします。

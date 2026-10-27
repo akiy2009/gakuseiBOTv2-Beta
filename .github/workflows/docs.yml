@@ -1,46 +1,54 @@
-name: Generate Markdown Docs
+name: Build API documentation
 
 on:
   push:
     branches: [main]
+    paths:
+      - "cogs/**/*.py"
+      - "requirements.txt"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "cogs/**/*.py"
+      - "requirements.txt"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: api-docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  generate-docs:
+  build-docs:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      # 1. リポジトリをチェックアウト
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      # 2. Python をセットアップ
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.12'   # 3.x でも良いが明示的に指定する方が安定
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-      # 3. 依存関係をインストール
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pdoc
+          python -m pip install -r requirements.txt "pdoc>=14,<16"
 
-      # 4. docs フォルダを作成
-      - name: Create docs folder if not exists
-        run: mkdir -p docs
+      - name: Generate API documentation
+        run: pdoc --output-dir build/api-docs cogs
 
-      # 5. Markdown ドキュメントを生成
-      - name: Generate Markdown docs
-        run: |
-          pdoc --markdown --output-dir docs ./cogs
-
-
-      # 6. docs フォルダをコミットしてプッシュ
-      - name: Commit and push docs
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git commit -m "Update generated docs" || echo "No changes to commit"
-          git push
+      - name: Upload API documentation
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-documentation
+          path: build/api-docs/
+          if-no-files-found: error
+          retention-days: 14

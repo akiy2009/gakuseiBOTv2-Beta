@@ -2,27 +2,52 @@ name: Deploy to VPS
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Validate deployment secrets
+        shell: bash
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          missing=()
+          [[ -n "$SERVER_IP" ]] || missing+=("SERVER_IP")
+          [[ -n "$SSH_USER" ]] || missing+=("SSH_USER")
+          [[ -n "$SSH_KEY" ]] || missing+=("SSH_KEY")
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required repository secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
 
       - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 10m
           script: |
-            set -e
+            set -euo pipefail
             cd ~/gakuseiBOT
-            git fetch --all
+            git fetch origin main
             git reset --hard origin/main
             docker compose pull
             docker compose up -d --build
