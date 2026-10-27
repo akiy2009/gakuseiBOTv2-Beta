@@ -59,6 +59,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
     steps:
       - name: Publish or update PR status comment
         env:
@@ -81,10 +82,10 @@ jobs:
               success) echo "**Overall:** ✅ All configured checks passed" ;;
               failure) echo "**Overall:** ❌ One or more checks failed" ;;
               cancelled) echo "**Overall:** ⚪ Checks were cancelled" ;;
-              *) echo "**Overall:** ⚠️ Status: `$CHECK_RESULT`" ;;
+              *) echo "**Overall:** ⚠️ Status: $CHECK_RESULT" ;;
             esac
             echo
-            echo "- **Commit:** `$COMMIT_SHA`"
+            echo "- **Commit:** **$COMMIT_SHA**"
             echo "- **Workflow:** [View run]($RUN_URL)"
             echo
             echo "### Check details"
