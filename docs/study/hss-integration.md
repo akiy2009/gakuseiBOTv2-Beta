@@ -26,7 +26,7 @@ HSS.py の現在の `hss/types.py` は `typing.NotRequired` を import します
 3. HSS API の application 画面で発行した token を、秘密の環境変数 `HSS_API_TOKEN` に設定します。
 4. `.env` に次の項目を設定します。
 
-   ```dotenv
+   ```text
    HSS_API_TOKEN=ここに実際のtokenを設定
    HSS_SCHOOL_ID=123
    HSS_GRADE=2
