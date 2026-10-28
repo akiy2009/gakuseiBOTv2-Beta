@@ -1,6 +1,7 @@
+from datetime import datetime
+
 import discord
 import pytz
-from datetime import datetime
 from discord import app_commands
 from discord.ext import commands
 
@@ -13,7 +14,10 @@ class SetTimestamp(commands.Cog):
         name="timestanp",
         description="YYYY/MM/DD/HH:MM形式の日時をタイムスタンプに変換します",
     )
-    @app_commands.describe(date_str="YYYY/MM/DD/HH:MM 形式で入力してください", type="表示形式を選択してください")
+    @app_commands.describe(
+        date_str="YYYY/MM/DD/HH:MM 形式で入力してください",
+        type="表示形式を選択してください",
+    )
     @app_commands.choices(
         type=[
             app_commands.Choice(name="時間表示", value="t"),
@@ -38,7 +42,10 @@ class SetTimestamp(commands.Cog):
             timestamp_text = f"<t:{unix_time}:{type.value}>"
             embed = discord.Embed(
                 title="変換結果",
-                description=f"{timestamp_text}\n{timestamp_text}",
+                description=(
+                    f"プレビュー: {timestamp_text}\n"
+                    f"コピー用: `{timestamp_text}`"
+                ),
                 color=discord.Color.brand_green(),
             )
             await interaction.response.send_message(embed=embed)

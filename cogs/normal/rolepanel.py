@@ -23,13 +23,19 @@ _UNSAFE_ROLE_PERMISSIONS = (
 )
 
 
-def _is_safe_self_assignable(role: discord.Role, bot_member: discord.Member) -> bool:
+def _is_safe_self_assignable(
+    role: discord.Role,
+    bot_member: discord.Member,
+    creator: discord.Member | None = None,
+    creator_is_owner: bool = False,
+) -> bool:
     if (
         role.is_default()
         or role.is_bot_managed()
         or role.is_integration()
         or role.is_premium_subscriber()
         or role >= bot_member.top_role
+        or (creator is not None and not creator_is_owner and role >= creator.top_role)
     ):
         return False
     return not any(
@@ -64,9 +70,9 @@ class RoleSelect(discord.ui.Select):
             return
 
         bot_member = guild.me
-        if bot_member is None:
+        if bot_member is None or not bot_member.guild_permissions.manage_roles:
             await interaction.response.send_message(
-                "Bot のサーバーメンバー情報を取得できませんでした。",
+                "Bot の「ロールの管理」権限を確認してください。",
                 ephemeral=True,
             )
             return
@@ -80,7 +86,6 @@ class RoleSelect(discord.ui.Select):
             current_role = guild.get_role(role_id)
             if current_role is None or not _is_safe_self_assignable(current_role, bot_member):
                 continue
-
             try:
                 if role_id in selected_ids and current_role not in member.roles:
                     await member.add_roles(current_role, reason="セルフサービスのロールパネル")
@@ -100,7 +105,6 @@ class RoleSelect(discord.ui.Select):
             lines.append("変更できなかったロール: " + ", ".join(failed))
         if not lines:
             lines.append("変更はありませんでした。")
-
         await interaction.response.send_message("\n".join(lines), ephemeral=True)
 
 
@@ -157,11 +161,7 @@ class PanelRole(discord.ui.Select):
                 view=None,
             )
             return
-
-        await interaction.response.edit_message(
-            content="ロール選択パネルを作成しました。",
-            view=None,
-        )
+        await interaction.response.edit_message(content="ロール選択パネルを作成しました。", view=None)
 
 
 class RolePanelCog(commands.Cog):
@@ -179,14 +179,15 @@ class RolePanelCog(commands.Cog):
         description: str = "以下のメニューからロールを選択してください。",
     ) -> None:
         guild = interaction.guild
-        if guild is None or not isinstance(interaction.user, discord.Member):
+        creator = interaction.user
+        if guild is None or not isinstance(creator, discord.Member):
             await interaction.response.send_message(
                 "このコマンドはサーバー内で使用してください。",
                 ephemeral=True,
             )
             return
 
-        if not interaction.user.guild_permissions.manage_roles:
+        if not creator.guild_permissions.manage_roles:
             await interaction.response.send_message(
                 "ロール選択パネルの作成には「ロールの管理」権限が必要です。",
                 ephemeral=True,
@@ -194,24 +195,24 @@ class RolePanelCog(commands.Cog):
             return
 
         bot_member = guild.me
-        if bot_member is None:
-            await interaction.response.send_message(
-                "Bot のサーバーメンバー情報を取得できませんでした。",
-                ephemeral=True,
-            )
-            return
-        if not bot_member.guild_permissions.manage_roles:
+        if bot_member is None or not bot_member.guild_permissions.manage_roles:
             await interaction.response.send_message(
                 "Bot に「ロールの管理」権限がありません。",
                 ephemeral=True,
             )
             return
 
+        is_owner = creator.id == guild.owner_id
         roles = sorted(
             (
                 role
                 for role in guild.roles
-                if _is_safe_self_assignable(role, bot_member)
+                if _is_safe_self_assignable(
+                    role,
+                    bot_member,
+                    creator=creator,
+                    creator_is_owner=is_owner,
+                )
             ),
             key=lambda role: role.position,
             reverse=True,

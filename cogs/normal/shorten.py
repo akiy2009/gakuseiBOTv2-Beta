@@ -7,6 +7,19 @@ from discord import app_commands
 from discord.ext import commands
 
 
+def _valid_http_url(candidate: str) -> bool:
+    try:
+        parsed = urlsplit(candidate)
+        return (
+            parsed.scheme in {"http", "https"}
+            and bool(parsed.hostname)
+            and parsed.username is None
+            and parsed.password is None
+        )
+    except ValueError:
+        return False
+
+
 class URLShortener(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -18,13 +31,7 @@ class URLShortener(commands.Cog):
         if "://" not in candidate:
             candidate = f"https://{candidate}"
 
-        parsed = urlsplit(candidate)
-        if (
-            parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or parsed.username is not None
-            or parsed.password is not None
-        ):
+        if not _valid_http_url(candidate):
             await interaction.response.send_message(
                 "有効な http または https のURLを入力してください。",
                 ephemeral=True,
@@ -53,7 +60,6 @@ class URLShortener(commands.Cog):
                     ephemeral=True,
                 )
                 return
-
             await interaction.followup.send(f"短縮URL: {result}")
         except (aiohttp.ClientError, asyncio.TimeoutError):
             await interaction.followup.send(

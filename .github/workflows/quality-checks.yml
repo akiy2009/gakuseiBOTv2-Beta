@@ -52,7 +52,11 @@ jobs:
 
   pr-status-report:
     name: PR status report
-    if: always() && github.event_name == 'pull_request'
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     needs: quality-checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -73,7 +77,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           {
             echo "<!-- gakuseibot-pr-status -->"
             echo "## gakuseiBOT — CI status"
@@ -104,9 +107,7 @@ jobs:
             echo
             echo "_This comment is updated automatically when the PR checks run._"
           } > pr-status.md
-
           COMMENT_ID="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate --jq '.[] | select(.body | contains("<!-- gakuseibot-pr-status -->")) | .id' | tail -n 1)"
-
           if [[ -n "$COMMENT_ID" ]]; then
             gh api --method PATCH "repos/$GH_REPO/issues/comments/$COMMENT_ID" --input <(jq -n --rawfile body pr-status.md '{body: $body}')
             echo "Updated existing PR status comment."
