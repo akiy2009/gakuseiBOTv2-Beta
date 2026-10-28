@@ -1,6 +1,6 @@
 # Discord Bot
 discord.py>=2.0.0
-aiohttp>=3.8.0
+aiohttp>=3.14.5
 
 # Developer utilities
 psutil>=5.9.0
