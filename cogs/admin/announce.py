@@ -1,89 +1,106 @@
+import os
+
 import discord
 from discord.ext import commands
 
-DEVELOPER_ID = 1241366063858450485  # ←あなたのユーザーIDに置き換えてください
 
-class BroadcastModal(discord.ui.Modal, title="📢 お知らせ送信フォーム"):
+def _developer_id() -> int | None:
+    raw_value = os.getenv("DEVELOPER_ID", "").strip()
+    if not raw_value:
+        return None
+    try:
+        return int(raw_value)
+    except ValueError:
+        return None
+
+
+class BroadcastModal(discord.ui.Modal, title="お知らせ送信フォーム"):
     title_input = discord.ui.TextInput(
         label="タイトル",
         placeholder="例）緊急メンテナンスのお知らせ",
-        max_length=100
+        max_length=100,
     )
     content_input = discord.ui.TextInput(
         label="本文",
         style=discord.TextStyle.paragraph,
         placeholder="詳細内容をここに記入してください。",
-        max_length=2000
+        max_length=2000,
     )
 
-    def __init__(self, bot: commands.Bot, inter: discord.Interaction):
+    def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.inter = inter
 
-    async def on_submit(self, interaction: discord.Interaction):
-        if interaction.user.id != DEVELOPER_ID:
-            await interaction.response.send_message("❌ あなたはこの機能を使用できません。", ephemeral=True)
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        developer_id = _developer_id()
+        if developer_id is None or interaction.user.id != developer_id:
+            await interaction.response.send_message(
+                "この機能は設定済みの開発者のみ使用できます。",
+                ephemeral=True,
+            )
             return
 
         embed = discord.Embed(
             title=self.title_input.value,
             description=self.content_input.value,
-            color=discord.Color.blurple()
+            color=discord.Color.blurple(),
         )
         embed.set_footer(text="Powered by gakuseiBOT")
 
-        success, fallback_dm, skipped = 0, 0, 0
+        sent_to_channel = 0
+        sent_by_dm = 0
+        skipped = 0
 
         for guild in self.bot.guilds:
-            sent = False
+            channel = guild.system_channel
+            bot_member = guild.me
+            if (
+                channel is not None
+                and bot_member is not None
+                and channel.permissions_for(bot_member).send_messages
+            ):
+                try:
+                    await channel.send(embed=embed)
+                    sent_to_channel += 1
+                    continue
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+
             try:
-                # 優先1: システム通知チャンネル
-                if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-                    await guild.system_channel.send(embed=embed)
-                    success += 1
-                    sent = True
-                # 優先2: オーナーDM
-                elif not sent and guild.owner:
-                    try:
-                        await guild.owner.send(embed=embed)
-                        fallback_dm += 1
-                        sent = True
-                    except discord.Forbidden:
-                        skipped += 1
-                else:
-                    skipped += 1
-            except Exception as e:
-                print(f"❌ 送信失敗 ({guild.name}): {e}")
+                owner = guild.owner or await guild.fetch_member(guild.owner_id)
+                await owner.send(embed=embed)
+                sent_by_dm += 1
+            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                 skipped += 1
 
         await interaction.response.send_message(
-            f"✅ お知らせ送信完了！\n"
-            f"・システム通知チャンネル送信: {success}\n"
-            f"・オーナーDM送信: {fallback_dm}\n"
-            f"・送信できなかった: {skipped}",
-            ephemeral=True
+            "お知らせ送信が完了しました。\n"
+            f"・チャンネル送信: {sent_to_channel}\n"
+            f"・オーナーDM送信: {sent_by_dm}\n"
+            f"・送信できなかったサーバー: {skipped}",
+            ephemeral=True,
         )
+
 
 class BroadcastModalCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @discord.app_commands.command(name="announce", description="全サーバーにお知らせを送信（開発者限定）")
-    async def broadcast(self, interaction: discord.Interaction):
-        if interaction.user.id != DEVELOPER_ID:
-            await interaction.response.send_message("❌ このコマンドは開発者のみ使用できます。", ephemeral=True)
+    @discord.app_commands.command(
+        name="announce",
+        description="全サーバーにお知らせを送信（開発者限定）",
+    )
+    async def broadcast(self, interaction: discord.Interaction) -> None:
+        developer_id = _developer_id()
+        if developer_id is None or interaction.user.id != developer_id:
+            await interaction.response.send_message(
+                "この機能は設定済みの開発者のみ使用できます。",
+                ephemeral=True,
+            )
             return
 
-        await interaction.response.send_modal(BroadcastModal(self.bot, interaction))
+        await interaction.response.send_modal(BroadcastModal(self.bot))
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        try:
-            synced = await self.bot.tree.sync()
-            print(f"[🔃 Slash Command Sync] {len(synced)} commands")
-        except Exception as e:
-            print(f"[❌ Slash Command Sync Error] {e}")
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(BroadcastModalCog(bot))

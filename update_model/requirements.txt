@@ -1,4 +1,0 @@
-discord.py>=2.3.2
-python-dotenv>=1.0.0     # 環境変数管理（TOKENなど）
-aiohttp>=3.9.0           # 非同期HTTPクライアント（APIアクセス用）
-watchdog>=4.0.0          # ファイル変更監視（ホットリロード）

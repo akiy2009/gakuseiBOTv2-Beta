@@ -1,101 +1,68 @@
-# Byte-compiled / optimized / DLL files
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.hypothesis/
+.coverage*
+htmlcov/
+.tox/
+.nox/
 
-# C extensions
-*.so
-
-# Distribution / packaging
+# Packaging and build output
 .Python
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
+*.egg-info/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
 # Virtual environments
-.env/
 .venv/
-env/
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
 
 # Environment variables and secrets
 .env
-.env.local
-.env.production
-.env.staging
+.env.*
 *.env
 config_secret.py
+secrets.*
+!.env.example
 
-# Database files
+# Databases and runtime state
 *.db
 *.sqlite3
 *.sqlite
+data/heavy_cogs.json
+data/settings.json
+data/warnings.json
+data/message_log.json
 
-# Log files
+# Logs and generated quality reports
 *.log
 logs/
+audit_output.txt
+mypy_output.txt
+ruff_output.txt
+pr-status.md
 
-# OS generated files
+# OS and editor files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# IDE specific files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Heavy cogs tracking
-data/heavy_cogs.json
-
-# Bot-specific sensitive data
-data/settings.json
-data/warnings.json
-data/message_log.json
 
 # Temporary files
 tmp/

@@ -1,26 +1,36 @@
+from __future__ import annotations
+
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))  # リポジトリルートをパスに追加
 
-# Sphinx拡張
+sys.path.insert(0, os.path.abspath(".."))
+
+project = "gakuseiBOT v2"
+copyright = "gakuseiBOT contributors"
+author = "gakuseiBOT contributors"
+
 extensions = [
-    "myst_parser",            # Markdownサポート
-    "sphinx.ext.autodoc",     # 自動ドキュメント生成
-    "sphinx.ext.napoleon",    # Google / NumPy docstring
+    "myst_parser",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
 ]
 
-# importできない外部依存モジュールをモック
-autodoc_mock_imports = ["discord", "numpy", "some_other_module"]
-
-# Markdown設定
-myst_enable_extensions = [
-    "linkify",
-    "colon_fence",
-]
-
-# HTML出力テーマ
-html_theme = "sphinx_rtd_theme"
-
-# 出力ディレクトリ設定
-source_suffix = [".rst", ".md"]
+myst_enable_extensions = ["colon_fence"]
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+root_doc = "index"
 master_doc = "index"
+html_theme = "sphinx_rtd_theme"
+exclude_patterns = ["_build", "build", "source"]
+autodoc_mock_imports = [
+    "discord",
+    "aiohttp",
+    "watchdog",
+    "dotenv",
+    "wikipedia",
+    "pytz",
+    "psutil",
+    "requests",
+]

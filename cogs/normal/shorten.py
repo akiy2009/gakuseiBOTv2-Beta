@@ -1,8 +1,24 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
+import asyncio
+from urllib.parse import urlsplit
+
 import aiohttp
-import re
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+
+def _valid_http_url(candidate: str) -> bool:
+    try:
+        parsed = urlsplit(candidate)
+        return (
+            parsed.scheme in {"http", "https"}
+            and bool(parsed.hostname)
+            and parsed.username is None
+            and parsed.password is None
+        )
+    except ValueError:
+        return False
+
 
 class URLShortener(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -10,26 +26,47 @@ class URLShortener(commands.Cog):
 
     @app_commands.command(name="shorten", description="URLを短縮します")
     @app_commands.describe(url="短縮したいURLを入力してください")
-    async def shorten(self, interaction: discord.Interaction, url: str):
-        await interaction.response.defer()
+    async def shorten(self, interaction: discord.Interaction, url: str) -> None:
+        candidate = url.strip()
+        if "://" not in candidate:
+            candidate = f"https://{candidate}"
 
-        # URLの先頭に http:// または https:// がなければ https:// を付与
-        if not re.match(r'^https?://', url):
-            url = 'https://' + url
+        if not _valid_http_url(candidate):
+            await interaction.response.send_message(
+                "有効な http または https のURLを入力してください。",
+                ephemeral=True,
+            )
+            return
 
-        api_url = f"https://is.gd/create.php?format=simple&url={url}"
-
+        await interaction.response.defer(thinking=True)
+        timeout = aiohttp.ClientTimeout(total=10)
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as resp:
-                    if resp.status != 200:
-                        await interaction.followup.send("⚠ URL短縮サービスに接続できませんでした。", ephemeral=True)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    "https://is.gd/create.php",
+                    params={"format": "simple", "url": candidate},
+                ) as response:
+                    result = (await response.text()).strip()
+                    if response.status != 200 or result.lower().startswith("error:"):
+                        await interaction.followup.send(
+                            "URL短縮サービスがリクエストを受け付けませんでした。",
+                            ephemeral=True,
+                        )
                         return
-                    short_url = await resp.text()
 
-            await interaction.followup.send(f"🔗 短縮URL: {short_url}")
-        except Exception as e:
-            await interaction.followup.send(f"⚠ エラーが発生しました: {e}", ephemeral=True)
+            if not result.startswith(("https://", "http://")):
+                await interaction.followup.send(
+                    "URL短縮サービスから有効な結果が返されませんでした。",
+                    ephemeral=True,
+                )
+                return
+            await interaction.followup.send(f"短縮URL: {result}")
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            await interaction.followup.send(
+                "URL短縮サービスに接続できませんでした。時間をおいて再試行してください。",
+                ephemeral=True,
+            )
 
-async def setup(bot: commands.Bot):
+
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(URLShortener(bot))

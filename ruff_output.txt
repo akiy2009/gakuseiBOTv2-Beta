@@ -1,8 +1,0 @@
-F821 Undefined name `aaa`
- --> cogs/tests/aa_test.py:1:1
-  |
-1 | aaa
-  | ^^^
-  |
-
-Found 1 error.

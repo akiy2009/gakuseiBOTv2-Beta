@@ -1,0 +1,4 @@
+myst-parser>=3,<5
+Sphinx>=7,<9
+sphinx-rtd-theme>=2,<4
+pdoc>=14,<16

@@ -1,4 +1,4 @@
-name: Python Quality CI
+name: Python CI
 
 on:
   push:
@@ -8,170 +8,110 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
+
+concurrency:
+  group: python-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality-checks:
+    name: Syntax and tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    name: Code Quality Checks
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
-          pip install black ruff mypy flake8 pytest coverage pip-audit
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
 
-      - name: Run Ruff (Lint)
-        continue-on-error: true
-        run: |
-          if [ -d "cogs" ]; then
-            ruff check cogs > ruff_output.txt || true
-            cat ruff_output.txt
-          fi
+      - name: Verify installed dependencies
+        run: python -m pip check
 
-      - name: Run Mypy (Type Checking)
-        continue-on-error: true
-        run: |
-          if [ -d "cogs" ]; then
-            mypy cogs > mypy_output.txt || true
-            cat mypy_output.txt
-          fi
+      - name: Check Python syntax
+        run: python -m compileall -q main.py cogs
 
-      - name: Run pip-audit (Security)
-        continue-on-error: true
-        run: |
-          pip-audit > audit_output.txt || true
-          cat audit_output.txt
+      - name: Run tests
+        run: python -m pytest -q
 
-      - name: Run Pytest (Tests with Coverage)
-        continue-on-error: true
-        run: |
-          if [ -d "tests" ]; then
-            coverage run -m pytest || true
-            coverage report || true
-            coverage xml || true
-          else
-            echo "No tests directory found, skipping tests."
-          fi
-
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: quality-logs
-          path: |
-            ruff_output.txt
-            mypy_output.txt
-            audit_output.txt
-
-  auto-fix-and-report:
-    runs-on: ubuntu-latest
+  pr-status-report:
+    name: PR status report
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     needs: quality-checks
-    name: Auto Fix & PR/Issue
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Fetch all branches
-        run: git fetch --prune --all
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install tools
-        run: |
-          pip install black ruff gh
-
-      - name: Download logs
-        uses: actions/download-artifact@v4
-        with:
-          name: quality-logs
-
-      - name: Git config
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Generate unique branch name
-        id: branch_name
-        run: echo "value=auto/format-fix-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-
-      - name: Create new branch from main
-        run: |
-          git checkout -b "${{ steps.branch_name.outputs.value }}" origin/main
-
-      - name: Run formatters (black, ruff)
-        run: |
-          if [ -d "cogs" ]; then
-            black cogs tests || true
-            ruff check cogs tests --fix || true
-          fi
-      - name: Commit changes if any
-        id: commit
-        run: |
-          git add .
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            git commit -m "style: 自動整形による修正 (black/ruff)"
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Push branch (if commit changed)
-        if: steps.commit.outputs.changed == 'true'
-        run: git push origin "${{ steps.branch_name.outputs.value }}"
-
-      - name: Create Pull Request (only if changed)
-        if: steps.commit.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.branch_name.outputs.value }}
-          base: main
-          title: "自動整形: black/ruff による修正"
-          body: |
-            GitHub Actions によって自動で作成された PR です。
-            - `black` によるコード整形
-            - `ruff` による Lint 修正
-          commit-message: "style: 自動整形 (black/ruff)"
-          labels: auto-fix, formatting
-          delete-branch: false
-          draft: false
-          push-to-fork: false
-
-      - name: Create GitHub Issues for static analysis errors
-        if: steps.commit.outputs.changed == 'false'
-        run: |
-          mkdir -p .github/issues
-          grep -v "All checks passed" ruff_output.txt > .github/issues/ruff.txt || true
-          grep -v "Success:" mypy_output.txt > .github/issues/mypy.txt || true
-          cat audit_output.txt > .github/issues/audit.txt || true
-
-          for file in .github/issues/*.txt; do
-            if [ -s "$file" ]; then
-              title="Code Quality Issue: $(basename "$file" .txt)"
-              body=$(cat "$file")
-              gh issue create --title "$title" --body "$body" --label ci-auto
-            fi
-          done
+      - name: Publish or update PR status comment
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CHECK_RESULT: ${{ needs.quality-checks.result }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "<!-- gakuseibot-pr-status -->"
+            echo "## gakuseiBOT — CI status"
+            echo
+            case "$CHECK_RESULT" in
+              success) echo "**Overall:** ✅ All configured checks passed" ;;
+              failure) echo "**Overall:** ❌ One or more checks failed" ;;
+              cancelled) echo "**Overall:** ⚪ Checks were cancelled" ;;
+              *) echo "**Overall:** ⚠️ Status: $CHECK_RESULT" ;;
+            esac
+            echo
+            echo "- **Commit:** **$COMMIT_SHA**"
+            echo "- **Workflow:** [View run]($RUN_URL)"
+            echo
+            echo "### Check details"
+            gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs" --paginate --jq '
+              .jobs[]
+              | select(.name != "PR status report")
+              | "- **" + .name + "** — " + (
+                  if .conclusion == "success" then "✅ passed"
+                  elif .conclusion == "failure" then "❌ failed"
+                  elif .conclusion == "cancelled" then "⚪ cancelled"
+                  elif .status == "in_progress" then "⏳ running"
+                  else "⚠️ " + (.conclusion // .status)
+                  end
+                )
+            '
+            echo
+            echo "_This comment is updated automatically when the PR checks run._"
+          } > pr-status.md
+          COMMENT_ID="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate --jq '.[] | select(.body | contains("<!-- gakuseibot-pr-status -->")) | .id' | tail -n 1)"
+          if [[ -n "$COMMENT_ID" ]]; then
+            gh api --method PATCH "repos/$GH_REPO/issues/comments/$COMMENT_ID" --input <(jq -n --rawfile body pr-status.md '{body: $body}')
+            echo "Updated existing PR status comment."
+          else
+            gh api --method POST "repos/$GH_REPO/issues/$PR_NUMBER/comments" --input <(jq -n --rawfile body pr-status.md '{body: $body}')
+            echo "Created PR status comment."
+          fi
