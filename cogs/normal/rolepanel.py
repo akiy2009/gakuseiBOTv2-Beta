@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-
 _UNSAFE_ROLE_PERMISSIONS = (
     "administrator",
     "manage_guild",
@@ -84,14 +83,20 @@ class RoleSelect(discord.ui.Select):
 
         for role_id in self.roles_by_id:
             current_role = guild.get_role(role_id)
-            if current_role is None or not _is_safe_self_assignable(current_role, bot_member):
+            if current_role is None or not _is_safe_self_assignable(
+                current_role, bot_member
+            ):
                 continue
             try:
                 if role_id in selected_ids and current_role not in member.roles:
-                    await member.add_roles(current_role, reason="セルフサービスのロールパネル")
+                    await member.add_roles(
+                        current_role, reason="セルフサービスのロールパネル"
+                    )
                     added.append(current_role.name)
                 elif role_id not in selected_ids and current_role in member.roles:
-                    await member.remove_roles(current_role, reason="セルフサービスのロールパネル")
+                    await member.remove_roles(
+                        current_role, reason="セルフサービスのロールパネル"
+                    )
                     removed.append(current_role.name)
             except (discord.Forbidden, discord.HTTPException):
                 failed.append(current_role.name)
@@ -152,7 +157,8 @@ class PanelRole(discord.ui.Select):
         view.add_item(RoleSelect(selected_roles))
         try:
             await channel.send(
-                content=self.description_text or "以下のメニューからロールを選択してください。",
+                content=self.description_text
+                or "以下のメニューからロールを選択してください。",
                 view=view,
             )
         except (discord.Forbidden, discord.HTTPException):
@@ -161,7 +167,9 @@ class PanelRole(discord.ui.Select):
                 view=None,
             )
             return
-        await interaction.response.edit_message(content="ロール選択パネルを作成しました。", view=None)
+        await interaction.response.edit_message(
+            content="ロール選択パネルを作成しました。", view=None
+        )
 
 
 class RolePanelCog(commands.Cog):

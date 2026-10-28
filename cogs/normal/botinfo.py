@@ -19,8 +19,12 @@ class BOTInfo(commands.Cog):
             title="Botの導入状況",
             color=discord.Color.green(),
         )
-        embed.add_field(name="導入サーバー数", value=f"{guild_count} サーバー", inline=False)
-        embed.add_field(name="合計ユーザー数", value=f"{user_count} 人（概算）", inline=False)
+        embed.add_field(
+            name="導入サーバー数", value=f"{guild_count} サーバー", inline=False
+        )
+        embed.add_field(
+            name="合計ユーザー数", value=f"{user_count} 人（概算）", inline=False
+        )
         embed.set_footer(text="gakuseiBOT Information")
 
         await interaction.response.send_message(embed=embed)

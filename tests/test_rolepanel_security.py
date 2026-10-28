@@ -4,7 +4,6 @@ from cogs.normal.feedback import _channel_id_from_env as feedback_channel_id
 from cogs.normal.report import _channel_id_from_env as report_channel_id
 from cogs.normal.rolepanel import _is_safe_self_assignable
 
-
 _PERMISSION_NAMES = (
     "administrator",
     "manage_guild",

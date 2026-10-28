@@ -5,12 +5,23 @@ from cogs.normal.rolepanel import _is_safe_self_assignable
 from cogs.normal.shorten import _valid_http_url
 from cogs.normal.timetable import format_lessons
 
-
 _PERMISSION_NAMES = (
-    "administrator", "manage_guild", "manage_roles", "manage_channels",
-    "manage_webhooks", "manage_messages", "manage_nicknames", "manage_events",
-    "manage_threads", "manage_expressions", "create_guild_expressions",
-    "view_audit_log", "moderate_members", "mention_everyone", "kick_members", "ban_members",
+    "administrator",
+    "manage_guild",
+    "manage_roles",
+    "manage_channels",
+    "manage_webhooks",
+    "manage_messages",
+    "manage_nicknames",
+    "manage_events",
+    "manage_threads",
+    "manage_expressions",
+    "create_guild_expressions",
+    "view_audit_log",
+    "moderate_members",
+    "mention_everyone",
+    "kick_members",
+    "ban_members",
 )
 
 

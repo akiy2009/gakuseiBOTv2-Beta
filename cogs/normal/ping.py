@@ -1,8 +1,10 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
-import aiohttp
 import time
+
+import aiohttp
+import discord
+from discord import app_commands
+from discord.ext import commands
+
 
 class PingBOTandWEB(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -27,13 +29,14 @@ class PingBOTandWEB(commands.Cog):
                 site_latency = None
                 status = "接続失敗"
 
-        embed = discord.Embed(
-            title="Ping 結果",
-            color=discord.Color.green()
-        )
+        embed = discord.Embed(title="Ping 結果", color=discord.Color.green())
         embed.add_field(name="🔁 Discord API", value=f"{latency_ms}ms", inline=False)
         if site_latency is not None:
-            embed.add_field(name="🌐 公式サイト", value=f"{site_latency}ms (HTTP {status})", inline=False)
+            embed.add_field(
+                name="🌐 公式サイト",
+                value=f"{site_latency}ms (HTTP {status})",
+                inline=False,
+            )
         else:
             embed.add_field(name="🌐 公式サイト", value="接続失敗", inline=False)
 
