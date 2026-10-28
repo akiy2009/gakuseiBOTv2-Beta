@@ -1,4 +1,3 @@
-import asyncio
 from urllib.parse import urlsplit
 
 import aiohttp
@@ -61,7 +60,7 @@ class URLShortener(commands.Cog):
                 )
                 return
             await interaction.followup.send(f"短縮URL: {result}")
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+        except (TimeoutError, aiohttp.ClientError):
             await interaction.followup.send(
                 "URL短縮サービスに接続できませんでした。時間をおいて再試行してください。",
                 ephemeral=True,

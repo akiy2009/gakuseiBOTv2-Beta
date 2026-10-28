@@ -23,11 +23,7 @@ class HelpSelect(Select):
     async def callback(self, interaction: discord.Interaction) -> None:
         commands_in_view = self.view.commands if self.view else []
         selected_command = next(
-            (
-                command
-                for command in commands_in_view
-                if command.name == self.values[0]
-            ),
+            (command for command in commands_in_view if command.name == self.values[0]),
             None,
         )
         if selected_command is None:

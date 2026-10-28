@@ -23,22 +23,48 @@ def _valid_image_url(image_url: str) -> bool:
 class EmbedModal(Modal):
     def __init__(self):
         super().__init__(title="埋め込みを作成")
-        self.title_input = TextInput(label="タイトル", placeholder="埋め込みメッセージのタイトルを入力してください", max_length=256, required=True)
+        self.title_input = TextInput(
+            label="タイトル",
+            placeholder="埋め込みメッセージのタイトルを入力してください",
+            max_length=256,
+            required=True,
+        )
         self.add_item(self.title_input)
-        self.description_input = TextInput(label="メッセージ", style=discord.TextStyle.paragraph, placeholder="埋め込みメッセージの内容を入力してください", max_length=2048, required=True)
+        self.description_input = TextInput(
+            label="メッセージ",
+            style=discord.TextStyle.paragraph,
+            placeholder="埋め込みメッセージの内容を入力してください",
+            max_length=2048,
+            required=True,
+        )
         self.add_item(self.description_input)
-        self.image_url_input = TextInput(label="画像URL（任意）", placeholder="https://example.com/image.png", max_length=500, required=False)
+        self.image_url_input = TextInput(
+            label="画像URL（任意）",
+            placeholder="https://example.com/image.png",
+            max_length=500,
+            required=False,
+        )
         self.add_item(self.image_url_input)
-        self.color_input = TextInput(label="色コード（任意）", placeholder="例: FF0000（デフォルトで青）", max_length=6, required=False)
+        self.color_input = TextInput(
+            label="色コード（任意）",
+            placeholder="例: FF0000（デフォルトで青）",
+            max_length=6,
+            required=False,
+        )
         self.add_item(self.color_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         color_text = self.color_input.value.strip().removeprefix("#")
         if color_text and (
             len(color_text) != 6
-            or any(character not in "0123456789abcdefABCDEF" for character in color_text)
+            or any(
+                character not in "0123456789abcdefABCDEF" for character in color_text
+            )
         ):
-            await interaction.response.send_message("色コードが無効です。6桁の16進数（例: FF0000）を入力してください。", ephemeral=True)
+            await interaction.response.send_message(
+                "色コードが無効です。6桁の16進数（例: FF0000）を入力してください。",
+                ephemeral=True,
+            )
             return
 
         embed = discord.Embed(

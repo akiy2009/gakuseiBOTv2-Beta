@@ -43,8 +43,7 @@ class SetTimestamp(commands.Cog):
             embed = discord.Embed(
                 title="変換結果",
                 description=(
-                    f"プレビュー: {timestamp_text}\n"
-                    f"コピー用: `{timestamp_text}`"
+                    f"プレビュー: {timestamp_text}\nコピー用: `{timestamp_text}`"
                 ),
                 color=discord.Color.brand_green(),
             )

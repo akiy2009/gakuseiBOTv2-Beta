@@ -43,12 +43,16 @@ class WikipediaCog(commands.Cog):
             await interaction.followup.send(embed=embed)
         except wikipedia.DisambiguationError as error:
             options = ", ".join(error.options[:5]) or "候補を取得できませんでした"
-            await interaction.followup.send(f"検索ワードが曖昧です。候補: {options[:1500]}")
+            await interaction.followup.send(
+                f"検索ワードが曖昧です。候補: {options[:1500]}"
+            )
         except wikipedia.PageError:
             await interaction.followup.send("該当するページが見つかりませんでした。")
         except Exception:
             logger.exception("Wikipedia search failed for query=%r", query)
-            await interaction.followup.send("Wikipedia の検索に失敗しました。時間をおいて再試行してください。")
+            await interaction.followup.send(
+                "Wikipedia の検索に失敗しました。時間をおいて再試行してください。"
+            )
 
 
 async def setup(bot: commands.Bot) -> None:

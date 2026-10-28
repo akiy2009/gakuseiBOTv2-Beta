@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 import discord
 from discord import app_commands
@@ -15,14 +16,26 @@ logger = logging.getLogger(__name__)
 
 _REQUIRED_ENV = ("HSS_API_TOKEN", "HSS_SCHOOL_ID", "HSS_GRADE", "HSS_CLASS")
 _DAY_LABELS = {
-    "sun": "日曜日", "mon": "月曜日", "tue": "火曜日", "wed": "水曜日",
-    "thu": "木曜日", "fri": "金曜日", "sat": "土曜日",
+    "sun": "日曜日",
+    "mon": "月曜日",
+    "tue": "火曜日",
+    "wed": "水曜日",
+    "thu": "木曜日",
+    "fri": "金曜日",
+    "sat": "土曜日",
 }
 _DAY_VALUES = {
-    "日曜日": "sun", "月曜日": "mon", "火曜日": "tue", "水曜日": "wed",
-    "木曜日": "thu", "金曜日": "fri", "土曜日": "sat",
+    "日曜日": "sun",
+    "月曜日": "mon",
+    "火曜日": "tue",
+    "水曜日": "wed",
+    "木曜日": "thu",
+    "金曜日": "fri",
+    "土曜日": "sat",
 }
-_DAY_CHOICES = [app_commands.Choice(name=label, value=value) for label, value in _DAY_VALUES.items()]
+_DAY_CHOICES = [
+    app_commands.Choice(name=label, value=value) for label, value in _DAY_VALUES.items()
+]
 
 
 def _positive_int_env(name: str) -> int:
@@ -63,7 +76,7 @@ def format_lessons(lessons: Iterable[Any]) -> str:
             if rows and current_length + len(marker) + 1 <= max_description_length:
                 rows.append(marker)
             elif not rows:
-                rows.append(row[:max_description_length - 1] + "…")
+                rows.append(row[: max_description_length - 1] + "…")
             break
 
         rows.append(row)
@@ -101,22 +114,29 @@ class HssTimetableCog(commands.Cog):
             self.class_number = _positive_int_env("HSS_CLASS")
         except ValueError:
             self.state = "invalid_configuration"
-            logger.warning("HSS timetable configuration contains an invalid positive integer.")
+            logger.warning(
+                "HSS timetable configuration contains an invalid positive integer."
+            )
             return
         try:
             import hss
+
             client = hss.Client()
             self.client = client
             await client.setup(token=settings["HSS_API_TOKEN"])
             school = client.get_school(school_id)
             if school is None:
                 self.state = "school_not_found"
-                logger.warning("HSS integration could not access the configured school.")
+                logger.warning(
+                    "HSS integration could not access the configured school."
+                )
                 return
             classroom = school.classes.get(self.grade, {}).get(self.class_number)
             if classroom is None:
                 self.state = "class_not_found"
-                logger.warning("HSS integration could not find the configured grade/class.")
+                logger.warning(
+                    "HSS integration could not find the configured grade/class."
+                )
                 return
             self.school = school
             self.classroom = classroom
@@ -124,11 +144,16 @@ class HssTimetableCog(commands.Cog):
             logger.info("HSS timetable integration is ready for the configured class.")
         except ImportError:
             self.state = "missing_dependency"
-            logger.warning("HSS timetable integration is configured but HSS.py is not installed. Install requirements-hss.txt with Python 3.11+.")
+            logger.warning(
+                "HSS timetable integration is configured but HSS.py is not installed. Install requirements-hss.txt with Python 3.11+."
+            )
             await self._close_client()
         except Exception as error:
             self.state = "connection_failed"
-            logger.warning("HSS timetable initialization failed (%s). Check configuration and API access.", type(error).__name__)
+            logger.warning(
+                "HSS timetable initialization failed (%s). Check configuration and API access.",
+                type(error).__name__,
+            )
             await self._close_client()
 
     async def _close_client(self) -> None:
@@ -153,13 +178,23 @@ class HssTimetableCog(commands.Cog):
             "class_not_found": "設定された学年・クラスが見つかりません。HSS の設定を確認してください。",
             "connection_failed": "HSS API に接続できませんでした。トークンと接続状態を運営に確認してください。",
         }
-        return messages.get(self.state, "HSS 時間割機能は現在利用できません。運営に確認してください。")
+        return messages.get(
+            self.state, "HSS 時間割機能は現在利用できません。運営に確認してください。"
+        )
 
-    @app_commands.command(name="timetable", description="HSS に登録された曜日別の時間割を表示します")
+    @app_commands.command(
+        name="timetable", description="HSS に登録された曜日別の時間割を表示します"
+    )
     @app_commands.choices(day=_DAY_CHOICES)
-    async def timetable(self, interaction: discord.Interaction, day: app_commands.Choice[str]) -> None:
+    async def timetable(
+        self, interaction: discord.Interaction, day: app_commands.Choice[str]
+    ) -> None:
         if self.state != "ready" or self.classroom is None or self.school is None:
-            await interaction.response.send_message(self._unavailable_message(), ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            await interaction.response.send_message(
+                self._unavailable_message(),
+                ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
             return
         day_timeline = getattr(self.classroom.timeline, day.value, None)
         lessons = getattr(day_timeline, "lessons", [])
@@ -169,7 +204,9 @@ class HssTimetableCog(commands.Cog):
             color=discord.Color.blurple(),
         )
         embed.set_footer(text=f"{self.grade}年 {self.class_number}組 | HSS API")
-        await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

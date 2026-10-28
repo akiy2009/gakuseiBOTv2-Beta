@@ -18,6 +18,8 @@ from watchdog.observers import Observer
 load_dotenv(Path(os.getenv("ENV_FILE", ".env")), override=False)
 
 PREFIX = os.getenv("PREFIX", "/").strip() or "/"
+
+
 def _read_heavy_threshold() -> float:
     try:
         value = float(os.getenv("HEAVY_THRESHOLD", "1.5"))
@@ -88,9 +90,7 @@ def load_heavy_cog_list() -> list[str]:
         log_print(f"[Warning] Could not read {HEAVY_COGS_PATH}: {error}")
         return []
 
-    if not isinstance(value, list) or not all(
-        isinstance(item, str) for item in value
-    ):
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         log_print(f"[Warning] {HEAVY_COGS_PATH} must contain a JSON array of strings.")
         return []
     return value
@@ -249,7 +249,7 @@ async def send_startup_report() -> None:
     for offset in range(0, len(content), chunk_size):
         embed = discord.Embed(
             title="BOT 起動ログ",
-            description=f"```\n{content[offset:offset + chunk_size]}\n```",
+            description=f"```\n{content[offset : offset + chunk_size]}\n```",
             color=discord.Color.green(),
         )
         try:
