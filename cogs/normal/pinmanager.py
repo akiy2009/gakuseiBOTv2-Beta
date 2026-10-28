@@ -26,16 +26,6 @@ class PinManager(commands.Cog):
             name="固定解除",
             callback=self.unpin_message,
         )
-        # ContextMenu.__init__ in the discord.py version used by this project
-        # does not accept default_permissions as a constructor argument.
-        # Attach the supported command metadata when the installed version exposes it.
-        permissions = discord.Permissions(manage_messages=True)
-        for context_menu in (self.pin_context_menu, self.unpin_context_menu):
-            try:
-                context_menu.default_permissions = permissions
-            except AttributeError:
-                # Callback-level checks below remain the authoritative enforcement.
-                pass
 
     async def cog_load(self) -> None:
         self.bot.tree.add_command(self.pin_context_menu)
@@ -71,6 +61,7 @@ class PinManager(commands.Cog):
     async def on_ready(self) -> None:
         await self._initialize_cache()
 
+    @app_commands.default_permissions(manage_messages=True)
     async def pin_message(self, interaction: discord.Interaction, message: discord.Message) -> None:
         if not _can_manage_fixed_messages(interaction):
             await interaction.response.send_message("この操作には「メッセージの管理」権限が必要です。", ephemeral=True)
@@ -107,6 +98,7 @@ class PinManager(commands.Cog):
             self.pinned_messages[channel.id] = new_message.id
         await interaction.response.send_message("固定しました。", ephemeral=True)
 
+    @app_commands.default_permissions(manage_messages=True)
     async def unpin_message(self, interaction: discord.Interaction, message: discord.Message) -> None:
         if not _can_manage_fixed_messages(interaction):
             await interaction.response.send_message("この操作には「メッセージの管理」権限が必要です。", ephemeral=True)
