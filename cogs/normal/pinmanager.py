@@ -21,13 +21,21 @@ class PinManager(commands.Cog):
         self.pin_context_menu = app_commands.ContextMenu(
             name="このメッセージを固定表示",
             callback=self.pin_message,
-            default_permissions=discord.Permissions(manage_messages=True),
         )
         self.unpin_context_menu = app_commands.ContextMenu(
             name="固定解除",
             callback=self.unpin_message,
-            default_permissions=discord.Permissions(manage_messages=True),
         )
+        # ContextMenu.__init__ in the discord.py version used by this project
+        # does not accept default_permissions as a constructor argument.
+        # Attach the supported command metadata when the installed version exposes it.
+        permissions = discord.Permissions(manage_messages=True)
+        for context_menu in (self.pin_context_menu, self.unpin_context_menu):
+            try:
+                context_menu.default_permissions = permissions
+            except AttributeError:
+                # Callback-level checks below remain the authoritative enforcement.
+                pass
 
     async def cog_load(self) -> None:
         self.bot.tree.add_command(self.pin_context_menu)
@@ -63,48 +71,22 @@ class PinManager(commands.Cog):
     async def on_ready(self) -> None:
         await self._initialize_cache()
 
-    async def pin_message(
-        self,
-        interaction: discord.Interaction,
-        message: discord.Message,
-    ) -> None:
+    async def pin_message(self, interaction: discord.Interaction, message: discord.Message) -> None:
         if not _can_manage_fixed_messages(interaction):
-            await interaction.response.send_message(
-                "この操作には「メッセージの管理」権限が必要です。",
-                ephemeral=True,
-            )
+            await interaction.response.send_message("この操作には「メッセージの管理」権限が必要です。", ephemeral=True)
             return
-
         channel = message.channel
         if not hasattr(channel, "send") or not hasattr(channel, "fetch_message"):
-            await interaction.response.send_message(
-                "このチャンネルではメッセージを固定表示できません。",
-                ephemeral=True,
-            )
+            await interaction.response.send_message("このチャンネルではメッセージを固定表示できません。", ephemeral=True)
             return
 
-        embed_main = discord.Embed(
-            title="固定メッセージ",
-            description=message.content or "（本文なし）",
-            color=discord.Color.blue(),
-        )
-        embed_main.set_author(
-            name=message.author.display_name,
-            icon_url=message.author.display_avatar.url,
-        )
-        embed_main.set_footer(
-            text=f"元ID:{message.id} | {message.created_at.strftime('%Y/%m/%d %H:%M:%S')}"
-        )
+        embed_main = discord.Embed(title="固定メッセージ", description=message.content or "（本文なし）", color=discord.Color.blue())
+        embed_main.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+        embed_main.set_footer(text=f"元ID:{message.id} | {message.created_at.strftime('%Y/%m/%d %H:%M:%S')}")
         embeds = [embed_main]
         if message.attachments:
             file_urls = "\n".join(attachment.url for attachment in message.attachments)
-            embeds.append(
-                discord.Embed(
-                    title="添付ファイル",
-                    description=file_urls[:4000],
-                    color=discord.Color.green(),
-                )
-            )
+            embeds.append(discord.Embed(title="添付ファイル", description=file_urls[:4000], color=discord.Color.green()))
 
         async with self._lock_for(channel.id):
             existing_id = self.pinned_messages.get(channel.id)
@@ -115,78 +97,49 @@ class PinManager(commands.Cog):
                 except discord.NotFound:
                     pass
                 except discord.HTTPException:
-                    await interaction.response.send_message(
-                        "既存の固定メッセージを更新できませんでした。Bot の権限を確認してください。",
-                        ephemeral=True,
-                    )
+                    await interaction.response.send_message("既存の固定メッセージを更新できませんでした。Bot の権限を確認してください。", ephemeral=True)
                     return
-
             try:
                 new_message = await channel.send(embeds=embeds)
             except (discord.Forbidden, discord.HTTPException):
-                await interaction.response.send_message(
-                    "固定メッセージを送信できませんでした。Bot の権限を確認してください。",
-                    ephemeral=True,
-                )
+                await interaction.response.send_message("固定メッセージを送信できませんでした。Bot の権限を確認してください。", ephemeral=True)
                 return
-
             self.pinned_messages[channel.id] = new_message.id
-
         await interaction.response.send_message("固定しました。", ephemeral=True)
 
-    async def unpin_message(
-        self,
-        interaction: discord.Interaction,
-        message: discord.Message,
-    ) -> None:
+    async def unpin_message(self, interaction: discord.Interaction, message: discord.Message) -> None:
         if not _can_manage_fixed_messages(interaction):
-            await interaction.response.send_message(
-                "この操作には「メッセージの管理」権限が必要です。",
-                ephemeral=True,
-            )
+            await interaction.response.send_message("この操作には「メッセージの管理」権限が必要です。", ephemeral=True)
             return
-
         channel = message.channel
         async with self._lock_for(channel.id):
             pinned_id = self.pinned_messages.get(channel.id)
             if pinned_id is None:
-                await interaction.response.send_message(
-                    "このチャンネルには固定メッセージがありません。",
-                    ephemeral=True,
-                )
+                await interaction.response.send_message("このチャンネルには固定メッセージがありません。", ephemeral=True)
                 return
-
             try:
                 pinned_message = await channel.fetch_message(pinned_id)
                 await pinned_message.delete()
             except discord.NotFound:
                 pass
             except (discord.Forbidden, discord.HTTPException):
-                await interaction.response.send_message(
-                    "固定を解除できませんでした。Bot の権限を確認してください。",
-                    ephemeral=True,
-                )
+                await interaction.response.send_message("固定を解除できませんでした。Bot の権限を確認してください。", ephemeral=True)
                 return
-
             if self.pinned_messages.get(channel.id) == pinned_id:
                 self.pinned_messages.pop(channel.id, None)
-
         await interaction.response.send_message("固定を解除しました。", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
-
         channel = message.channel
         if not hasattr(channel, "fetch_message"):
             return
-
         async with self._lock_for(channel.id):
             pinned_id = self.pinned_messages.get(channel.id)
             if pinned_id is None:
                 return
-
             try:
                 old_message = await channel.fetch_message(pinned_id)
                 embeds = old_message.embeds
@@ -194,7 +147,6 @@ class PinManager(commands.Cog):
                 new_message = await channel.send(embeds=embeds)
                 self.pinned_messages[channel.id] = new_message.id
             except discord.NotFound:
-                # Only clear the mapping if it still points at the ID we tried.
                 if self.pinned_messages.get(channel.id) == pinned_id:
                     self.pinned_messages.pop(channel.id, None)
             except (discord.Forbidden, discord.HTTPException):
