@@ -1,0 +1,79 @@
+name: Auto-fix code issues and open PR
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-code-fix-pr
+  cancel-in-progress: false
+
+jobs:
+  auto-fix:
+    name: Detect safe fixes and prepare PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install quality and project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff pytest
+          python -m pip install -r requirements.txt
+
+      - name: Apply safe automatic lint fixes
+        id: autofix
+        continue-on-error: true
+        run: |
+          ruff check --fix --output-format=github .
+          git diff --check
+
+      - name: Run test suite against the proposed fixes
+        id: tests
+        continue-on-error: true
+        run: |
+          python -m compileall -q main.py cogs tests
+          python -m pytest -q
+
+      - name: Open or update an assigned pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          branch: automation/auto-code-quality-fixes
+          delete-branch: false
+          commit-message: "chore: apply safe automated Python lint fixes"
+          title: "chore: automated safe code-quality fixes"
+          assignees: akiy2009
+          draft: ${{ steps.tests.outcome != 'success' }}
+          body: |
+            ## Automated code-quality maintenance
+
+            This PR is created by the Auto-fix code issues workflow.
+
+            - **Scope:** Ruff's safe, deterministic autofixes only. It does not rewrite application logic or automatically merge changes.
+            - **Lint step:** ${{ steps.autofix.outcome }}
+            - **Syntax and tests:** ${{ steps.tests.outcome }}
+            - **Triggered by:** ${{ github.event_name }}
+            - **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Please review the diff before merging. If tests do not pass, this PR remains a draft for investigation.
+          labels: ""
