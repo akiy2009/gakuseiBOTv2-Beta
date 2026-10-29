@@ -5,7 +5,7 @@ import math
 import operator
 import random
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -125,7 +125,7 @@ class PollView(discord.ui.View):
             title=f"📊 {discord.utils.escape_markdown(self.question)}",
             description="\n".join(lines),
             color=discord.Color.blurple(),
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         embed.set_footer(text=f"投票数: {total} • ボタンを押すと投票先を変更できます")
         return embed
@@ -240,7 +240,7 @@ class UtilityCommands(commands.Cog):
         embed = discord.Embed(
             title=f"{guild.name} のサーバー情報",
             color=discord.Color.blurple(),
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
@@ -272,7 +272,7 @@ class UtilityCommands(commands.Cog):
         embed = discord.Embed(
             title=f"{target.display_name} のユーザー情報",
             color=discord.Color.blurple(),
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="ユーザー名", value=str(target), inline=True)
