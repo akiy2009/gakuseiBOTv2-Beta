@@ -41,7 +41,7 @@ def calculate_expression(expression: str) -> int | float:
             return evaluate(node.body)
         if isinstance(node, ast.Constant) and type(node.value) in (int, float):
             value = node.value
-            if not math.isfinite(value) or abs(value) > 1e100:
+            if abs(value) > 1e100 or (isinstance(value, float) and not math.isfinite(value)):
                 raise ValueError("数値が大きすぎます。")
             return value
         if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPERATORS:
@@ -52,7 +52,7 @@ def calculate_expression(expression: str) -> int | float:
             if isinstance(node.op, ast.Pow) and abs(right) > 10:
                 raise ValueError("累乗の指数は -10〜10 の範囲で指定してください。")
             result = _BINARY_OPERATORS[type(node.op)](left, right)
-            if not math.isfinite(result) or abs(result) > 1e100:
+            if abs(result) > 1e100 or (isinstance(result, float) and not math.isfinite(result)):
                 raise ValueError("計算結果が大きすぎます。")
             return result
         raise ValueError("数値、括弧、+ - * / // % ** のみ使用できます。")
