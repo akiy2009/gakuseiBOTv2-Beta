@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from cogs.error import ErrorHandler, ErrorReportView
+from cogs.error import ErrorHandler, ErrorReportModal, ErrorReportView
 from cogs.admin.admin import AdminCog
 
 
@@ -62,3 +62,21 @@ def test_admin_reload_target_is_confined_to_existing_cog_files():
     assert not AdminCog._is_allowed_cog("os")
     assert not AdminCog._is_allowed_cog("cogs..admin")
     assert not AdminCog._is_allowed_cog("cogs.admin.__init__")
+
+
+
+def test_error_report_modal_collects_optional_bounded_details():
+    view = ErrorReportView(
+        commands.Bot(command_prefix="!", intents=discord.Intents.none()),
+        tx_id="TX-12345678",
+        error_id="E004",
+        command_name="test",
+        guild_id=1,
+        source_channel_id=2,
+        occurred_at=discord.utils.utcnow(),
+    )
+    modal = ErrorReportModal(view)
+    assert modal.title == "エラーの詳細を報告"
+    assert len(modal.children) == 1
+    assert modal.children[0].required is False
+    assert modal.children[0].max_length == 800

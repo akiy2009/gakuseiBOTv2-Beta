@@ -5,12 +5,16 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+import time
 from datetime import datetime
 
 import discord
 from discord.ext import commands
 
 logger = logging.getLogger(__name__)
+
+_REPORT_COOLDOWN_SECONDS = 60
+_last_report_by_user: dict[int, float] = {}
 
 
 def _read_report_channel_id() -> int | None:
@@ -23,6 +27,28 @@ def _read_report_channel_id() -> int | None:
         logger.warning("ERROR_REPORT_CHANNEL_ID must be an integer; error reports are disabled.")
         return None
     return channel_id if channel_id > 0 else None
+
+
+class ErrorReportModal(discord.ui.Modal, title="エラーの詳細を報告"):
+    """Collect optional reproduction details without exposing them publicly."""
+
+    details = discord.ui.TextInput(
+        label="発生した状況・再現手順",
+        placeholder="例：〇〇コマンドを実行した直後にエラーが表示されました。",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=800,
+    )
+
+    def __init__(self, report_view: "ErrorReportView") -> None:
+        super().__init__(timeout=300)
+        self.report_view = report_view
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.report_view.submit_report(
+            interaction,
+            details=str(self.details.value or "").strip(),
+        )
 
 
 class ErrorReportView(discord.ui.View):
@@ -48,12 +74,12 @@ class ErrorReportView(discord.ui.View):
         self.source_channel_id = source_channel_id
         self.occurred_at = occurred_at
         self._reported = False
+        self.source_message: discord.Message | None = None
 
     @discord.ui.button(
         label="このエラーを報告",
         style=discord.ButtonStyle.primary,
         emoji="📩",
-        custom_id=None,
     )
     async def report_error(
         self,
@@ -67,6 +93,44 @@ class ErrorReportView(discord.ui.View):
             )
             return
 
+        now = time.monotonic()
+        last_report = _last_report_by_user.get(interaction.user.id)
+        if last_report is not None:
+            remaining = _REPORT_COOLDOWN_SECONDS - (now - last_report)
+            if remaining > 0:
+                await interaction.response.send_message(
+                    f"報告が集中しています。{int(remaining) + 1}秒ほど待ってからお試しください。",
+                    ephemeral=True,
+                )
+                return
+
+        self.source_message = interaction.message
+        await interaction.response.send_modal(ErrorReportModal(self))
+
+    async def submit_report(
+        self,
+        interaction: discord.Interaction,
+        *,
+        details: str,
+    ) -> None:
+        if self._reported:
+            await interaction.response.send_message(
+                "このエラーはすでに報告されています。",
+                ephemeral=True,
+            )
+            return
+
+        now = time.monotonic()
+        last_report = _last_report_by_user.get(interaction.user.id)
+        if last_report is not None:
+            remaining = _REPORT_COOLDOWN_SECONDS - (now - last_report)
+            if remaining > 0:
+                await interaction.response.send_message(
+                    f"報告が集中しています。{int(remaining) + 1}秒ほど待ってからお試しください。",
+                    ephemeral=True,
+                )
+                return
+
         report_channel_id = _read_report_channel_id()
         if report_channel_id is None:
             await interaction.response.send_message(
@@ -75,6 +139,7 @@ class ErrorReportView(discord.ui.View):
             )
             return
 
+        await interaction.response.defer(ephemeral=True)
         channel = self.bot.get_channel(report_channel_id)
         if channel is None:
             try:
@@ -84,14 +149,14 @@ class ErrorReportView(discord.ui.View):
                     "Could not access configured error report channel: tx_id=%s",
                     self.tx_id,
                 )
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "報告先に接続できませんでした。時間をおいて再度お試しください。",
                     ephemeral=True,
                 )
                 return
 
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "報告先の設定が正しくありません。管理者へご連絡ください。",
                 ephemeral=True,
             )
@@ -117,26 +182,53 @@ class ErrorReportView(discord.ui.View):
             value=str(self.source_channel_id) if self.source_channel_id else "不明",
             inline=True,
         )
+        if details:
+            report.add_field(
+                name="利用者からの補足",
+                value=details[:1000],
+                inline=False,
+            )
+        if self.source_message is not None:
+            report.add_field(
+                name="エラー通知",
+                value=f"[元のエラーメッセージを開く]({self.source_message.jump_url})",
+                inline=False,
+            )
         report.set_footer(text="詳細な例外情報はBotのログで問い合わせIDを検索してください。")
 
-        self._reported = True
         try:
             await channel.send(
                 embed=report,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
         except (discord.Forbidden, discord.HTTPException):
-            self._reported = False
             logger.exception("Could not deliver error report: tx_id=%s", self.tx_id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "報告の送信に失敗しました。時間をおいて再度お試しください。",
                 ephemeral=True,
             )
             return
 
+        self._reported = True
+        _last_report_by_user[interaction.user.id] = time.monotonic()
+        # Keep the in-memory limiter bounded during long-running bot sessions.
+        cutoff = time.monotonic() - _REPORT_COOLDOWN_SECONDS
+        for user_id, reported_at in list(_last_report_by_user.items()):
+            if reported_at < cutoff:
+                _last_report_by_user.pop(user_id, None)
+
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(view=self)
+        if self.source_message is not None:
+            try:
+                await self.source_message.edit(view=self)
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                logger.warning(
+                    "Could not disable submitted error report button: tx_id=%s",
+                    self.tx_id,
+                    exc_info=True,
+                )
+
         await interaction.followup.send(
             f"報告を受け付けました。問い合わせID: `{self.tx_id}`",
             ephemeral=True,
@@ -222,7 +314,7 @@ class ErrorHandler(commands.Cog):
             color=color,
         )
         embed.add_field(name="問い合わせID", value=f"`{tx_id}`", inline=False)
-        embed.set_footer(text="下のボタンから、このエラーを運営へ報告できます。")
+        embed.set_footer(text="下のボタンから、状況を添えて運営へ報告できます。")
         view = ErrorReportView(
             self.bot,
             tx_id=tx_id,
