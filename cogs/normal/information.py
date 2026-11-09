@@ -193,6 +193,89 @@ def _safe_text(value: str, limit: int = 100) -> str:
     return discord.utils.escape_mentions(discord.utils.escape_markdown(value))[:limit]
 
 
+_PAGE_SIZE = 8
+
+
+class ArchivePager(discord.ui.View):
+    """Owner-only ephemeral pagination for archive results."""
+
+    def __init__(self, owner_id: int, title: str, entries: list[str]):
+        super().__init__(timeout=180)
+        self.owner_id = owner_id
+        self.title = title
+        self.entries = entries
+        self.page = 0
+        self._sync_buttons()
+
+    def _page_count(self) -> int:
+        return max(1, (len(self.entries) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+
+    def make_embed(self) -> discord.Embed:
+        start = self.page * _PAGE_SIZE
+        visible = self.entries[start : start + _PAGE_SIZE]
+        embed = discord.Embed(
+            title=self.title,
+            description="\\n".join(visible) if visible else "表示できる項目はありません。",
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text=f"{self.page + 1} / {self._page_count()} ページ ・ 全 {len(self.entries)} 件")
+        return embed
+
+    def _sync_buttons(self) -> None:
+        self.previous.disabled = self.page <= 0
+        self.next.disabled = self.page >= self._page_count() - 1
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("この一覧を操作できるのは実行した本人だけです。", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="前へ", style=discord.ButtonStyle.secondary)
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.page = max(0, self.page - 1)
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self.make_embed(), view=self)
+
+    @discord.ui.button(label="次へ", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.page = min(self._page_count() - 1, self.page + 1)
+        self._sync_buttons()
+        await interaction.response.edit_message(embed=self.make_embed(), view=self)
+
+
+class DeleteConfirmationView(discord.ui.View):
+    """Owner-only confirmation before deleting a saved item."""
+
+    def __init__(self, owner_id: int, delete_action: Callable[[], Awaitable[bool]], label: str):
+        super().__init__(timeout=60)
+        self.owner_id = owner_id
+        self.delete_action = delete_action
+        self.label = label
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("この確認画面を操作できるのは実行した本人だけです。", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="削除する", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        deleted = await self.delete_action()
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+        message = f"{self.label}を削除しました。" if deleted else f"{self.label}が見つかりません。"
+        await interaction.response.edit_message(content=message, embed=None, view=self)
+
+    @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+        await interaction.response.edit_message(content="削除をキャンセルしました。", embed=None, view=self)
+
+
 class PersonalInformationCog(commands.Cog):
     """Personal notes and bookmarks with owner-only access."""
 
