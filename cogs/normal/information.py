@@ -215,7 +215,7 @@ class ArchivePager(discord.ui.View):
         visible = self.entries[start : start + _PAGE_SIZE]
         embed = discord.Embed(
             title=self.title,
-            description="\\n".join(visible) if visible else "表示できる項目はありません。",
+            description="\n".join(visible) if visible else "表示できる項目はありません。",
             color=discord.Color.blurple(),
         )
         embed.set_footer(text=f"{self.page + 1} / {self._page_count()} ページ ・ 全 {len(self.entries)} 件")
@@ -385,7 +385,7 @@ class PersonalInformationCog(commands.Cog):
         if not rows:
             await interaction.response.send_message("ブックマークはありません。", ephemeral=True)
             return
-        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\\n<{row['url']}>" for row in rows]
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>" for row in rows]
         view = ArchivePager(interaction.user.id, "ブックマーク", lines)
         await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
