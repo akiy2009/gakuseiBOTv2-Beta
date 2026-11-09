@@ -1,36 +1,91 @@
 # Contributing Guide
 
-ありがとうございます！以下の手順で、プロジェクトに貢献できます。  
+gakuseiBOT v2 への貢献を歓迎します。バグ報告、機能改善、ドキュメント修正など、変更の規模にかかわらずご協力ください。
 
-## 手順
+## 開発環境
 
-1. **リポジトリをフォーク**  
-   GitHub上で [Fork] をクリックして自分のリポジトリを作成。  
+このプロジェクトでは **Python 3.12.x** を使用します。`.python-version` を参照し、別バージョンの仮想環境を使い回さないでください。
 
-2. **ローカルにクローン**
+Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python --version
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install pytest
+```
+
+macOS / Linux:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python --version
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install pytest
+```
+
+## 開発の流れ
+
+1. リポジトリを Fork します。
+2. Fork したリポジトリを clone します。
+
    ```bash
-   git clone https://github.com/あなたのユーザー名/リポジトリ名.git
-   cd リポジトリ名
+   git clone https://github.com/<your-account>/gakuseiBOTv2-Beta.git
+   cd gakuseiBOTv2-Beta
    ```
 
-3.**新しいブランチを作成**
-  ```bash
-  git checkout -b feature/変更内容  
-  ```
-4.**編集・変更を行う**
-コードやドキュメントを修正。  
+3. 変更内容が分かるブランチを作成します。
 
-5.**コミットとプッシュ**
-  ```bash
-  git add .
-  git commit -m "説明を記述"
-  git push origin feature/変更内容
-  ```
+   ```bash
+   git switch -c feature/short-description
+   ```
 
-6.**プルリクエスト作成**
-GitHubから本リポジトリに向けてPRを送信。  
+4. 変更を実装し、必要に応じてテストを追加・更新します。
+5. Pull Request を作成する前に、次のチェックを実行します。
 
-## PRのポイント  
-タイトル：簡潔に（例：Fix typo in README）  
+   ```bash
+   python --version
+   python -m pip check
+   python -m compileall -q main.py cogs
+   python -m pytest -q
+   ```
 
-本文：変更内容と理由を記述  
+6. 変更を小さな単位で commit し、Fork へ push します。
+
+   ```bash
+   git add <changed-files>
+   git commit -m "type: describe the change"
+   git push -u origin feature/short-description
+   ```
+
+7. GitHub から `main` ブランチに向けて Pull Request を作成します。
+
+## Pull Request の書き方
+
+Pull Request には、次の内容を含めてください。
+
+- **目的:** なぜ変更が必要なのか
+- **変更内容:** どの機能・ファイルを変更したか
+- **確認方法:** 実行したテストと結果
+- **影響範囲:** 設定変更、依存関係変更、互換性への影響
+- **関連 Issue:** 該当する場合はリンク
+
+機能変更には可能な範囲でテストを追加してください。token、API key、個人情報などの秘密情報を commit・Issue・Pull Request・ログへ含めないでください。
+
+## コミットメッセージ
+
+変更の目的が分かる短いメッセージを推奨します。
+
+- `feat: add a study command`
+- `fix: handle missing configuration`
+- `docs: clarify local setup`
+- `test: cover timetable parsing`
+- `chore: update dependencies`
+
+## レビューとマージ
+
+CI が成功していること、変更内容が説明されていること、必要なドキュメント・テストが更新されていることを確認してからレビュー・マージします。
