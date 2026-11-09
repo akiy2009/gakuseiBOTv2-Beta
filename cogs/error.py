@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
 import secrets
+from datetime import datetime
 
 import discord
 from discord.ext import commands
@@ -20,7 +20,7 @@ def _read_report_channel_id() -> int | None:
     try:
         channel_id = int(raw_value)
     except ValueError:
-        logger.warning("REPORT_CHANNEL_ID must be an integer; error reports are disabled.")
+        logger.warning("ERROR_REPORT_CHANNEL_ID must be an integer; error reports are disabled.")
         return None
     return channel_id if channel_id > 0 else None
 
