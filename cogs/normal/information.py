@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -310,13 +310,8 @@ class PersonalInformationCog(commands.Cog):
             await interaction.response.send_message("保存されたメモはありません。", ephemeral=True)
             return
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in notes]
-        embed = discord.Embed(
-            title="保存したメモ",
-            description="\n".join(lines),
-            color=discord.Color.blurple(),
-        )
-        embed.set_footer(text="最新20件を表示しています。内容は /note view で確認できます。")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        view = ArchivePager(interaction.user.id, "保存したメモ", lines)
+        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
     @note.command(name="view", description="指定したメモの内容を表示します")
     @app_commands.describe(note_id="メモID")
@@ -344,18 +339,28 @@ class PersonalInformationCog(commands.Cog):
             await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
             return
         rows = await asyncio.to_thread(self.store.search_notes, interaction.user.id, keyword)
+        if not rows:
+            await interaction.response.send_message("一致するメモはありません。", ephemeral=True)
+            return
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in rows]
-        await interaction.response.send_message(
-            "\n".join(lines) if lines else "一致するメモはありません。",
-            ephemeral=True,
-        )
+        view = ArchivePager(interaction.user.id, "メモの検索結果", lines)
+        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
     @note.command(name="delete", description="保存したメモを削除します")
     @app_commands.describe(note_id="削除するメモID")
     async def note_delete(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
-        deleted = await asyncio.to_thread(self.store.delete_note, interaction.user.id, note_id)
+        row = await asyncio.to_thread(self.store.get_note, interaction.user.id, note_id)
+        if row is None:
+            await interaction.response.send_message("メモが見つかりません。", ephemeral=True)
+            return
+        view = DeleteConfirmationView(
+            interaction.user.id,
+            lambda: asyncio.to_thread(self.store.delete_note, interaction.user.id, note_id),
+            "メモ",
+        )
         await interaction.response.send_message(
-            "メモを削除しました。" if deleted else "メモが見つかりません。",
+            f"「{_safe_text(row['title'])}」を削除しますか？この操作は取り消せません。",
+            view=view,
             ephemeral=True,
         )
 
@@ -380,17 +385,9 @@ class PersonalInformationCog(commands.Cog):
         if not rows:
             await interaction.response.send_message("ブックマークはありません。", ephemeral=True)
             return
-        lines = [
-            f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>"
-            for row in rows
-        ]
-        embed = discord.Embed(
-            title="ブックマーク",
-            description="\n".join(lines)[:4000],
-            color=discord.Color.blurple(),
-        )
-        embed.set_footer(text="最新20件を表示しています。")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\\n<{row['url']}>" for row in rows]
+        view = ArchivePager(interaction.user.id, "ブックマーク", lines)
+        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
     @bookmark.command(name="search", description="タイトルやURLから検索します")
     @app_commands.describe(keyword="検索キーワード")
@@ -400,22 +397,33 @@ class PersonalInformationCog(commands.Cog):
             await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
             return
         rows = await asyncio.to_thread(self.store.search_bookmarks, interaction.user.id, keyword)
-        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>" for row in rows]
-        await interaction.response.send_message(
-            "\n".join(lines)[:4000] if lines else "一致するブックマークはありません。",
-            ephemeral=True,
-        )
+        if not rows:
+            await interaction.response.send_message("一致するブックマークはありません。", ephemeral=True)
+            return
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\\n<{row['url']}>" for row in rows]
+        view = ArchivePager(interaction.user.id, "ブックマークの検索結果", lines)
+        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
 
     @bookmark.command(name="delete", description="ブックマークを削除します")
     @app_commands.describe(bookmark_id="削除するブックマークID")
     async def bookmark_delete(
         self, interaction: discord.Interaction, bookmark_id: app_commands.Range[int, 1]
     ) -> None:
-        deleted = await asyncio.to_thread(self.store.delete_bookmark, interaction.user.id, bookmark_id)
+        rows = await asyncio.to_thread(self.store.list_bookmarks, interaction.user.id, _MAX_ITEMS_PER_USER)
+        if not any(row["id"] == bookmark_id for row in rows):
+            await interaction.response.send_message("ブックマークが見つかりません。", ephemeral=True)
+            return
+        view = DeleteConfirmationView(
+            interaction.user.id,
+            lambda: asyncio.to_thread(self.store.delete_bookmark, interaction.user.id, bookmark_id),
+            "ブックマーク",
+        )
         await interaction.response.send_message(
-            "ブックマークを削除しました。" if deleted else "ブックマークが見つかりません。",
+            f"ブックマーク ID {bookmark_id} を削除しますか？この操作は取り消せません。",
+            view=view,
             ephemeral=True,
         )
+
 
 
 async def setup(bot: commands.Bot) -> None:
