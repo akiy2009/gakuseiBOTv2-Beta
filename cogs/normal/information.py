@@ -152,6 +152,8 @@ class PersonalArchiveStore:
             or any(character.isspace() or ord(character) < 32 or character in "<>" for character in url)
         ):
             raise ArchiveError("認証情報を含まない有効な http:// または https:// URLを入力してください。")
+        if not title:
+            title = hostname or ""
         if not title or len(title) > _MAX_TITLE_LENGTH:
             raise ArchiveError("タイトルは1〜100文字で入力してください。")
         with self._connect() as connection:
@@ -369,7 +371,7 @@ class PersonalInformationCog(commands.Cog):
     async def bookmark_add(
         self, interaction: discord.Interaction, url: str, title: str | None = None
     ) -> None:
-        title = (title or "").strip() or (urlparse(url).hostname or "")
+        title = (title or "").strip()
         try:
             bookmark_id = await asyncio.to_thread(self.store.add_bookmark, interaction.user.id, title, url)
         except ArchiveError as error:
