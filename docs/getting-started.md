@@ -2,12 +2,12 @@
 
 ## 必要なもの
 
-- Python 3.10 以上（Bot 本体）
+- **Python 3.12.x（必須）**
 - Discord Developer Portal で作成した Bot application と token
 - Git
 - Bot を追加する Discord サーバーで、必要な権限を設定できること
 
-HSS 時間割連携を使う場合は Python 3.11 以上が必要です。通常の Bot 機能には HSS の追加パッケージは必要ありません。
+HSS 時間割連携も含め、すべての機能で Python 3.12.x を使用します。通常の Bot 機能には HSS の追加パッケージは必要ありません。
 
 ## 1. ソースを取得
 
@@ -16,13 +16,15 @@ git clone https://github.com/akiy2009/gakuseiBOTv2-Beta.git
 cd gakuseiBOTv2-Beta
 ```
 
-## 2. 仮想環境を作成
+## 2. Python 3.12 の仮想環境を作成
 
 Windows PowerShell:
 
 ```powershell
-py -3 -m venv .venv
+py -3.12 --version
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python --version
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
@@ -30,11 +32,15 @@ python -m pip install -r requirements.txt
 macOS / Linux:
 
 ```bash
-python3 -m venv .venv
+python3.12 --version
+python3.12 -m venv .venv
 source .venv/bin/activate
+python --version
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
+
+仮想環境を有効にした後、`python --version` が `Python 3.12.x` と表示されることを確認してください。
 
 ## 3. Discord の token と intents を設定
 
@@ -62,7 +68,7 @@ python main.py
 
 ## 5. Docker Compose で起動
 
-Docker Engine と Docker Compose v2 を用意し、リポジトリのルートで `.env` を設定してから実行します。
+Docker Engine と Docker Compose v2 を用意し、リポジトリのルートで `.env` を設定してから実行します。Dockerfile は Python 3.12 ベースのイメージを使用します。
 
 ```bash
 docker compose config --quiet
@@ -74,10 +80,10 @@ docker compose logs -f bot
 
 ## 6. HSS 時間割機能（任意）
 
-HSS 時間割機能には Python 3.11 以上と HSS API token が必要です。
+HSS 時間割機能も Python 3.12.x 環境で利用します。
 
 - ローカル: `python -m pip install -r requirements-hss.txt`
-- Docker Compose: `.env` の `INSTALL_HSS=true` に変更し、`docker compose up -d --build` でイメージを再ビルドします。
+- Docker Compose: `.env` の `INSTALL_HSS=true` に変更し、`docker compose up -d --build` でイメージを再ビルド
 
 次に `HSS_API_TOKEN`、`HSS_SCHOOL_ID`、`HSS_GRADE`、`HSS_CLASS` を設定して Bot を再起動し、Discord の `/timetable` を実行します。詳細は [HSS 連携ガイド](study/hss-integration.md) を参照してください。
 
