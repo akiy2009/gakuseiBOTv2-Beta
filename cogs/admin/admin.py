@@ -1,13 +1,16 @@
+"""Developer-only administration commands with constrained Cog loading."""
+
 import logging
 import os
+import re
 from pathlib import Path
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-
 logger = logging.getLogger(__name__)
+_COG_MODULE_PATTERN = re.compile(r"^cogs(?:\.[A-Za-z_][A-Za-z0-9_]*)+$")
 
 
 def _read_developer_id() -> int | None:
@@ -15,9 +18,11 @@ def _read_developer_id() -> int | None:
     if not raw_value:
         return None
     try:
-        return int(raw_value)
+        value = int(raw_value)
     except ValueError:
+        logger.warning("DEVELOPER_ID must be an integer; developer commands are disabled.")
         return None
+    return value if value > 0 else None
 
 
 class AdminCog(commands.Cog):
@@ -27,6 +32,20 @@ class AdminCog(commands.Cog):
     def _is_developer(self, user_id: int) -> bool:
         developer_id = _read_developer_id()
         return developer_id is not None and user_id == developer_id
+
+    @staticmethod
+    def _is_allowed_cog(cog: str) -> bool:
+        """Only allow import targets that map to Python files below cogs/."""
+        if not _COG_MODULE_PATTERN.fullmatch(cog):
+            return False
+        relative_path = Path(*cog.split(".")).with_suffix(".py")
+        root = Path("cogs").resolve()
+        target = (Path.cwd() / relative_path).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            return False
+        return target.is_file() and target.name != "__init__.py"
 
     @app_commands.command(
         name="admin",
@@ -76,6 +95,18 @@ class AdminCog(commands.Cog):
             )
             return
 
+        if not self._is_allowed_cog(cog):
+            await interaction.response.send_message(
+                "指定できるのは cogs/ 配下に存在するCogのみです。",
+                ephemeral=True,
+            )
+            logger.warning(
+                "Rejected invalid Cog reload target: user_id=%s target=%r",
+                interaction.user.id,
+                cog,
+            )
+            return
+
         try:
             if cog in self.bot.extensions:
                 await self.bot.reload_extension(cog)
@@ -90,11 +121,11 @@ class AdminCog(commands.Cog):
                 f"{cog} の{action}に成功しました。",
                 ephemeral=True,
             )
-        except Exception as error:
+        except (commands.ExtensionError, OSError, ImportError):
             logger.exception("Failed to load or reload Cog %s", cog)
             if not hasattr(self.bot, "load_failures"):
                 self.bot.load_failures = {}
-            self.bot.load_failures[cog] = str(error)
+            self.bot.load_failures[cog] = "ロードに失敗しました。詳細はログを確認してください。"
             await interaction.response.send_message(
                 f"{cog} のロードに失敗しました。設定とログを確認してください。",
                 ephemeral=True,
