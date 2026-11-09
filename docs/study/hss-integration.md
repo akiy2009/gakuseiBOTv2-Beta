@@ -8,15 +8,15 @@ HSS.py 本体を `cogs/` や `py-module/` に複製して管理する方式は�
 
 ## 対応環境
 
-- Bot 本体: Python 3.10 以上
-- HSS 時間割機能: Python 3.11 以上
+- Bot 本体: Python 3.12.x
+- HSS 時間割機能: Python 3.12.x
 - HSS.py: upstream のパッケージ。追加依存関係は `requirements-hss.txt` で別管理
 
-HSS.py の現在の `hss/types.py` は `typing.NotRequired` を import します。`typing.NotRequired` は Python 3.11 で標準ライブラリに追加されたため、HSS 連携には Python 3.11 以上を使用してください。upstream のパッケージメタデータには Python 3.10 classifier もありますが、ここでは実装コードの import 要件を優先しています。
+このプロジェクトでは、Bot 本体・任意機能・CI・Docker・ドキュメント生成を Python 3.12.x に統一しています。HSS.py が利用する `typing.NotRequired` は Python 3.11 で標準ライブラリに追加されていますが、プロジェクト全体の実行環境は Python 3.12 に固定しています。
 
 ## インストールと設定
 
-1. Python 3.11 以上の仮想環境を有効にします。
+1. Python 3.12.x の仮想環境を有効にします。
 2. リポジトリのルートから追加依存関係を入れます。
 
    ```bash
