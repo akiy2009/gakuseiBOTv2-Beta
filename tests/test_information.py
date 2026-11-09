@@ -77,7 +77,14 @@ def test_bookmark_rejects_malformed_authority_and_credentials(tmp_path):
 def test_search_treats_user_wildcards_as_literal_text(tmp_path):
     store = make_store(tmp_path)
     store.add_note(1, "100% completed", "literal underscore_value")
-    store.add_note(1, "ordinary", "another value")
+    store.add_note(1, "1000 completed", "ordinary xvalue")
 
     assert len(store.search_notes(1, "100%")) == 1
     assert len(store.search_notes(1, "_value")) == 1
+
+
+def test_bookmark_title_defaults_to_validated_hostname(tmp_path):
+    store = make_store(tmp_path)
+    bookmark_id = store.add_bookmark(1, "", "https://docs.python.org/3/")
+    assert store.list_bookmarks(1)[0]["id"] == bookmark_id
+    assert store.list_bookmarks(1)[0]["title"] == "docs.python.org"
