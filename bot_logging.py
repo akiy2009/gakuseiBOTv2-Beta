@@ -51,13 +51,27 @@ def _positive_int(value: str | None, default: int, setting: str) -> int:
     return parsed
 
 
+
+def _nonnegative_int(value: str | None, default: int, setting: str) -> int:
+    if value is None or not value.strip():
+        return default
+    try:
+        parsed = int(value)
+    except ValueError:
+        sys.stderr.write(f"Invalid {setting}; using {default}.\\n")
+        return default
+    if parsed < 0:
+        sys.stderr.write(f"{setting} must not be negative; using {default}.\\n")
+        return default
+    return parsed
+
 def configure_logging(
     *,
     stream: TextIO | None = None,
     log_file: str | Path | None = None,
     level: str | None = None,
-    max_bytes: int = 5 * 1024 * 1024,
-    backup_count: int = 5,
+    max_bytes: int | None = None,
+    backup_count: int | None = None,
     buffer_capacity: int = 200,
 ) -> StartupBufferHandler:
     """Configure root logging and return the bounded startup-log handler.
@@ -79,6 +93,17 @@ def configure_logging(
         existing.close()
     root.setLevel(numeric_level)
 
+    resolved_max_bytes = (
+        max_bytes
+        if max_bytes is not None
+        else _positive_int(os.getenv("LOG_MAX_BYTES"), 5 * 1024 * 1024, "LOG_MAX_BYTES")
+    )
+    resolved_backup_count = (
+        backup_count
+        if backup_count is not None
+        else _nonnegative_int(os.getenv("LOG_BACKUP_COUNT"), 5, "LOG_BACKUP_COUNT")
+    )
+
     formatter = logging.Formatter(_DEFAULT_FORMAT)
     console_handler = logging.StreamHandler(stream or sys.stderr)
     console_handler.setFormatter(formatter)
@@ -94,8 +119,8 @@ def configure_logging(
             path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = RotatingFileHandler(
                 path,
-                maxBytes=max(1, max_bytes),
-                backupCount=max(0, backup_count),
+                maxBytes=max(1, resolved_max_bytes),
+                backupCount=max(0, resolved_backup_count),
                 encoding="utf-8",
             )
             file_handler.setFormatter(formatter)
