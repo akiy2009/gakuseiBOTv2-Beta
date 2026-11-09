@@ -125,8 +125,7 @@ pdoc --output-dir build/api-docs cogs
 
 GitHub Actions も Python 3.12 で品質チェックとドキュメントビルドを実行します。
 
-## ドキュメント
-
+## 個人情報管理コマンド\n\n- `/note add` / `list` / `view` / `search` / `delete`: 個人メモの保存・閲覧・検索・削除\n- `/bookmark add` / `list` / `search` / `delete`: URL の保存・検索・削除\n\nメモとブックマークは SQLite に保存され、Bot 再起動後も保持されます。各データは登録した Discord ユーザー本人のみ操作でき、コマンド応答も本人だけに表示されます。\n\n## ドキュメント\n
 - [セットアップガイド](docs/getting-started.md)
 - [環境変数・設定](docs/configuration.md)
 - [アーキテクチャ](docs/architecture.md)
