@@ -82,7 +82,13 @@ class ErrorHandler(commands.Cog):
         error_id, message, color = self.get_app_error_info(error)
         original = getattr(error, "original", error)
         command_name = (
-            interaction.command.qualified_name if interaction.command else "unknown"
+            getattr(
+                interaction.command,
+                "qualified_name",
+                getattr(interaction.command, "name", "unknown"),
+            )
+            if interaction.command
+            else "unknown"
         )
 
         if isinstance(error, discord.app_commands.CommandInvokeError):
