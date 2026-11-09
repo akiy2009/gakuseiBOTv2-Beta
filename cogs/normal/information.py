@@ -99,7 +99,7 @@ class PersonalArchiveStore:
             )
             return int(cursor.lastrowid)
 
-    def list_notes(self, user_id: int, limit: int = 20) -> list[sqlite3.Row]:
+    def list_notes(self, user_id: int, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
         with self._connect() as connection:
             return list(connection.execute(
                 "SELECT id, title, created_at FROM notes WHERE user_id = ? ORDER BY id DESC LIMIT ?",
@@ -113,7 +113,7 @@ class PersonalArchiveStore:
                 (user_id, note_id),
             ).fetchone()
 
-    def search_notes(self, user_id: int, keyword: str, limit: int = 20) -> list[sqlite3.Row]:
+    def search_notes(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
         pattern = f"%{keyword}%"
         with self._connect() as connection:
             return list(connection.execute(
@@ -163,14 +163,14 @@ class PersonalArchiveStore:
             )
             return int(cursor.lastrowid)
 
-    def list_bookmarks(self, user_id: int, limit: int = 20) -> list[sqlite3.Row]:
+    def list_bookmarks(self, user_id: int, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
         with self._connect() as connection:
             return list(connection.execute(
                 "SELECT id, title, url, created_at FROM bookmarks WHERE user_id = ? ORDER BY id DESC LIMIT ?",
                 (user_id, limit),
             ))
 
-    def search_bookmarks(self, user_id: int, keyword: str, limit: int = 20) -> list[sqlite3.Row]:
+    def search_bookmarks(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
         pattern = f"%{keyword}%"
         with self._connect() as connection:
             return list(connection.execute(
