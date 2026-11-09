@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime
 import secrets
 
 import discord
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _read_report_channel_id() -> int | None:
-    raw_value = os.getenv("REPORT_CHANNEL_ID", "").strip()
+    raw_value = os.getenv("ERROR_REPORT_CHANNEL_ID", "").strip()
     if not raw_value:
         return None
     try:
@@ -36,7 +37,7 @@ class ErrorReportView(discord.ui.View):
         command_name: str,
         guild_id: int | None,
         source_channel_id: int | None,
-        occurred_at: discord.utils.utcnow,
+        occurred_at: datetime,
     ) -> None:
         super().__init__(timeout=900)
         self.bot = bot
