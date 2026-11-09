@@ -13,7 +13,24 @@ docker compose logs --tail=100 bot
 
 HSS 時間割機能を Docker で使う場合は、`.env` の `INSTALL_HSS=true` に変更してから `docker compose up -d --build` を実行し、HSS.py をイメージへ追加します。このオプションはビルド時の設定です。通常の Bot のみを使う場合は `false` のままで構いません。
 
-更新時はレビュー済みの commit を取得してから `docker compose up -d --build --remove-orphans` を実行します。停止は `docker compose down` です。Bot の実行データは `bot-data` という名前付き volume に保持されます。`docker compose down -v` は保存データを消去するため、必要性を確認してから実行してください。
+更新時はレビュー済みの commit を取得してから `docker compose up -d --build --remove-orphans` を実行します。停止は `docker compose down` です。Bot の実行データは `bot-data`、ローテーションログは `bot-logs` という名前付き volume に保持されます。`docker compose down -v` は両方の volume を消去するため、必要性を確認してから実行してください。
+
+## ログの確認
+
+アプリケーションログは標準出力/標準エラーと `/app/logs/gakuseibot.log` に出力されます。Docker 環境では次のコマンドを使います。
+
+```bash
+# コンテナ標準出力
+docker compose logs --tail=200 -f bot
+
+# 現在のログファイル
+docker compose exec bot sh -c 'tail -n 200 /app/logs/gakuseibot.log'
+
+# ローテーション済みログの一覧
+docker compose exec bot sh -c 'ls -lh /app/logs'
+```
+
+ログレベル・ファイル出力・ローテーションサイズは `.env` の `LOG_LEVEL`、`LOG_FILE`、`LOG_MAX_BYTES`、`LOG_BACKUP_COUNT` で調整します。ファイル出力を無効にする場合は `LOG_FILE=` とします。ログを外部へ共有する際は、token、API key、個人情報が含まれていないことを確認してください。
 
 ## GitHub Actions による VPS デプロイ
 
@@ -30,8 +47,9 @@ HSS 時間割機能を Docker で使う場合は、`.env` の `INSTALL_HSS=true`
 ## 障害時の確認
 
 1. `docker compose ps` でコンテナが再起動を繰り返していないか確認します。
-2. `docker compose logs --tail=200 bot` で起動エラーを確認します。ログを共有する際は token や API key が含まれていないことを確認してください。
-3. Discord Developer Portal の token、intents、Bot 権限、チャンネル ID を確認します。
-4. HSS を利用する場合は、HSS token の有効性、学校 ID、学年・クラス番号、ネットワーク接続、追加依存関係を確認します。
+2. `docker compose logs --tail=200 bot` と `/app/logs/gakuseibot.log` で起動・実行エラーを確認します。
+3. 利用者から報告された処理 ID（`TX-XXXXXXXX`）で該当エラーを検索します。
+4. Discord Developer Portal の token、intents、Bot 権限、チャンネル ID を確認します。
+5. HSS を利用する場合は、HSS token の有効性、学校 ID、学年・クラス番号、ネットワーク接続、追加依存関係を確認します。
 
 token をログへ出力する修正は行わないでください。秘密情報を誤って公開した場合は、該当 token を無効化して再発行します。
