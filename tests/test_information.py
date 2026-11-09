@@ -59,3 +59,25 @@ def test_bookmarks_validate_urls_and_are_user_scoped(tmp_path):
     assert store.list_bookmarks(2) == []
     assert store.delete_bookmark(2, bookmark_id) is False
     assert store.delete_bookmark(1, bookmark_id) is True
+
+def test_bookmark_rejects_malformed_authority_and_credentials(tmp_path):
+    store = make_store(tmp_path)
+    invalid_urls = [
+        "https://user:password@example.com/private",
+        "https://example.com:invalid/path",
+        "https://example.com\\\\@evil.example/",
+        "https://example.com/has space",
+        "ftp://example.com/file",
+    ]
+    for url in invalid_urls:
+        with pytest.raises(ArchiveError):
+            store.add_bookmark(1, "invalid", url)
+
+
+def test_search_treats_user_wildcards_as_literal_text(tmp_path):
+    store = make_store(tmp_path)
+    store.add_note(1, "100% completed", "literal underscore_value")
+    store.add_note(1, "ordinary", "another value")
+
+    assert len(store.search_notes(1, "100%")) == 1
+    assert len(store.search_notes(1, "_value")) == 1
