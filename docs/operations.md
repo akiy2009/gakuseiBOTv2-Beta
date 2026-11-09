@@ -48,8 +48,9 @@ docker compose exec bot sh -c 'ls -lh /app/logs'
 
 1. `docker compose ps` でコンテナが再起動を繰り返していないか確認します。
 2. `docker compose logs --tail=200 bot` と `/app/logs/gakuseibot.log` で起動・実行エラーを確認します。
-3. 利用者から報告された処理 ID（`TX-XXXXXXXX`）で該当エラーを検索します。
-4. Discord Developer Portal の token、intents、Bot 権限、チャンネル ID を確認します。
-5. HSS を利用する場合は、HSS token の有効性、学校 ID、学年・クラス番号、ネットワーク接続、追加依存関係を確認します。
+3. `.env` の `ERROR_REPORT_CHANNEL_ID` に運営用のテキストチャンネルIDを設定し、Botにメッセージ送信・Embedリンク等の必要権限を付与します。
+4. 利用者から報告された問い合わせID（`TX-XXXXXXXX`）で該当エラーを検索します。
+5. Discord Developer Portal の token、intents、Bot 権限、チャンネル ID を確認します。
+6. HSS を利用する場合は、HSS token の有効性、学校 ID、学年・クラス番号、ネットワーク接続、追加依存関係を確認します。
 
 token をログへ出力する修正は行わないでください。秘密情報を誤って公開した場合は、該当 token を無効化して再発行します。
