@@ -140,3 +140,14 @@ GitHub Actions も Python 3.12 で品質チェックとドキュメントビル�
 ## License
 
 ライセンス条件はリポジトリ内の [LICENSE](LICENSE) を参照してください。
+
+
+## メモのフォルダ・タグ整理
+
+- `/archive folder-create`: フォルダを作成（1ユーザー最大20個）
+- `/archive folders`: フォルダと格納件数を表示
+- `/archive folder-delete`: フォルダを削除（メモ本文は削除されません）
+- `/archive organize`: メモにフォルダとタグを設定（タグは1メモ最大10個）
+- `/archive search`: フォルダ名・タグ名でメモを絞り込み
+
+整理情報は既存メモとは別のテーブルに保存するため、既存のメモ本文やIDは変更しません。フォルダ・タグの検索と更新はユーザーIDで分離されます。
