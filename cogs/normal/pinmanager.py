@@ -1,8 +1,12 @@
 import asyncio
+import logging
 
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+
+logger = logging.getLogger(__name__)
 
 
 def _can_manage_fixed_messages(interaction: discord.Interaction) -> bool:
@@ -59,7 +63,7 @@ class PinManager(commands.Cog):
                 except (discord.Forbidden, discord.HTTPException):
                     continue
         self._cache_initialized = True
-        print("[PinManager] Pinned-message cache initialized.")
+        logger.info("Pinned-message cache initialized.")
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:

@@ -1,9 +1,13 @@
+import logging
 import os
 from pathlib import Path
 
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+
+logger = logging.getLogger(__name__)
 
 
 def _read_developer_id() -> int | None:
@@ -87,6 +91,7 @@ class AdminCog(commands.Cog):
                 ephemeral=True,
             )
         except Exception as error:
+            logger.exception("Failed to load or reload Cog %s", cog)
             if not hasattr(self.bot, "load_failures"):
                 self.bot.load_failures = {}
             self.bot.load_failures[cog] = str(error)
