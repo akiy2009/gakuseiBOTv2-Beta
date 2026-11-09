@@ -208,15 +208,26 @@ class ArchivePager(discord.ui.View):
         self.owner_id = owner_id
         self.title = title
         self.entries = entries
+        self.pages: list[list[str]] = []
+        current_page: list[str] = []
+        current_length = 0
+        for entry in entries:
+            if current_page and (len(current_page) >= _PAGE_SIZE or current_length + len(entry) + 1 > 3500):
+                self.pages.append(current_page)
+                current_page = []
+                current_length = 0
+            current_page.append(entry)
+            current_length += len(entry) + 1
+        if current_page or not self.pages:
+            self.pages.append(current_page)
         self.page = 0
         self._sync_buttons()
 
     def _page_count(self) -> int:
-        return max(1, (len(self.entries) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+        return len(self.pages)
 
     def make_embed(self) -> discord.Embed:
-        start = self.page * _PAGE_SIZE
-        visible = self.entries[start : start + _PAGE_SIZE]
+        visible = self.pages[self.page]
         embed = discord.Embed(
             title=self.title,
             description="\n".join(visible) if visible else "表示できる項目はありません。",
