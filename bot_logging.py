@@ -51,7 +51,6 @@ def _positive_int(value: str | None, default: int, setting: str) -> int:
     return parsed
 
 
-
 def _nonnegative_int(value: str | None, default: int, setting: str) -> int:
     if value is None or not value.strip():
         return default
@@ -64,6 +63,7 @@ def _nonnegative_int(value: str | None, default: int, setting: str) -> int:
         sys.stderr.write(f"{setting} must not be negative; using {default}.\\n")
         return default
     return parsed
+
 
 def configure_logging(
     *,
