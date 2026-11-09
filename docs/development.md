@@ -1,14 +1,35 @@
 # 開発と品質確認
 
-## 開発環境の検証
+## 開発環境
 
-仮想環境を有効にし、リポジトリのルートで実行します。
+このプロジェクトの開発・テスト・実行環境は **Python 3.12.x** に統一しています。異なる Python バージョンで作成した仮想環境を流用せず、Python 3.12 で新しく作成してください。
+
+Windows PowerShell:
+
+```powershell
+py -3.12 --version
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python --version
+```
+
+macOS / Linux:
 
 ```bash
+python3.12 --version
+python3.12 -m venv .venv
+source .venv/bin/activate
+python --version
+```
+
+`Python 3.12.x` と表示されることを確認してから、リポジトリのルートで品質チェックを実行します。
+
+```bash
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m pip install pytest
 python -m pip check
 python -m compileall -q main.py cogs
-python -m pip install pytest
 python -m pytest -q
 ```
 
@@ -38,4 +59,12 @@ pdoc --output-dir build/api-docs cogs
 
 ## CI / PR status
 
-GitHub Actions は Python 3.10 / 3.11 / 3.12 で依存関係、構文、pytest を確認します。ドキュメント workflow は Sphinx の警告をエラー扱いして HTML を生成し、pdoc の API ドキュメントも生成します。PR の status comment は識別マーカーを使って既存コメントを更新するため、チェックの再実行ごとにコメントが増え続けることを避けます。
+GitHub Actions は Python 3.12 で依存関係、構文、pytest を確認します。ドキュメント workflow も Python 3.12 を使用し、Sphinx の警告をエラー扱いして HTML を生成し、pdoc の API ドキュメントも生成します。PR の status comment は識別マーカーを使って既存コメントを更新するため、チェックの再実行ごとにコメントが増え続けることを避けます。
+
+## 変更を提出する前に
+
+1. Python 3.12 の仮想環境が有効になっていることを確認します。
+2. `python -m pip check` が成功することを確認します。
+3. `python -m compileall -q main.py cogs` を実行します。
+4. `python -m pytest -q` を実行します。
+5. 変更した機能・設定・テスト結果を Pull Request に記載します。
