@@ -114,12 +114,12 @@ class PersonalArchiveStore:
             ).fetchone()
 
     def search_notes(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
-        escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_")
         pattern = f"%{escaped}%"
         with self._connect() as connection:
             return list(connection.execute(
                 """SELECT id, title, created_at FROM notes
-                   WHERE user_id = ? AND (title LIKE ? ESCAPE '\' OR content LIKE ? ESCAPE '\')
+                   WHERE user_id = ? AND (title LIKE ? ESCAPE '!' OR content LIKE ? ESCAPE '!')
                    ORDER BY id DESC LIMIT ?""",
                 (user_id, pattern, pattern, limit),
             ))
@@ -174,12 +174,12 @@ class PersonalArchiveStore:
             ))
 
     def search_bookmarks(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
-        escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_")
         pattern = f"%{escaped}%"
         with self._connect() as connection:
             return list(connection.execute(
                 """SELECT id, title, url, created_at FROM bookmarks
-                   WHERE user_id = ? AND (title LIKE ? ESCAPE '\' OR url LIKE ? ESCAPE '\')
+                   WHERE user_id = ? AND (title LIKE ? ESCAPE '!' OR url LIKE ? ESCAPE '!')
                    ORDER BY id DESC LIMIT ?""",
                 (user_id, pattern, pattern, limit),
             ))
