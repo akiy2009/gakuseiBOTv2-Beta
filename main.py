@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import io
+import logging
 import json
 import os
 import time
@@ -14,8 +14,12 @@ from dotenv import load_dotenv
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from bot_logging import configure_logging, get_startup_log
+
 # Load .env before reading any configuration. Existing environment variables win.
 load_dotenv(Path(os.getenv("ENV_FILE", ".env")), override=False)
+configure_logging()
+logger = logging.getLogger(__name__)
 
 PREFIX = os.getenv("PREFIX", "/").strip() or "/"
 
@@ -25,7 +29,7 @@ def _read_heavy_threshold() -> float:
         value = float(os.getenv("HEAVY_THRESHOLD", "1.5"))
         return value if value > 0 else 1.5
     except ValueError:
-        print("Warning: HEAVY_THRESHOLD must be a positive number; using 1.5 seconds.")
+        logger.warning("HEAVY_THRESHOLD must be a positive number; using 1.5 seconds.")
         return 1.5
 
 
@@ -40,7 +44,7 @@ def _read_optional_id(name: str) -> int | None:
     try:
         return int(value)
     except ValueError:
-        print(f"Warning: {name} must be an integer; related feature is disabled.")
+        logger.warning("%s must be an integer; related feature is disabled.", name)
         return None
 
 
@@ -64,19 +68,12 @@ status_list = [
     discord.Game("ダッシュボードを確認中"),
 ]
 
-log_buffer = io.StringIO()
 _status_index = 0
 _cogs_loaded = False
 _commands_synced = False
 _startup_reported = False
 _observer: Observer | None = None
 
-
-def log_print(*args: Any, **kwargs: Any) -> None:
-    """Print to the console and retain a copy for the optional startup report."""
-    print(*args, **kwargs)
-    buffer_kwargs = {key: value for key, value in kwargs.items() if key != "file"}
-    print(*args, **buffer_kwargs, file=log_buffer, flush=True)
 
 
 def load_heavy_cog_list() -> list[str]:
@@ -87,11 +84,11 @@ def load_heavy_cog_list() -> list[str]:
         with HEAVY_COGS_PATH.open("r", encoding="utf-8") as file:
             value = json.load(file)
     except (OSError, json.JSONDecodeError) as error:
-        log_print(f"[Warning] Could not read {HEAVY_COGS_PATH}: {error}")
+        logger.warning("Could not read %s: %s", HEAVY_COGS_PATH, error, exc_info=True)
         return []
 
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        log_print(f"[Warning] {HEAVY_COGS_PATH} must contain a JSON array of strings.")
+        logger.warning("%s must contain a JSON array of strings.", HEAVY_COGS_PATH)
         return []
     return value
 
@@ -107,7 +104,7 @@ async def load_all_cogs() -> None:
     heavy_cogs = set(load_heavy_cog_list())
     cog_root = Path("cogs")
     if not cog_root.is_dir():
-        log_print("[Warning] cogs/ directory was not found; no Cogs were loaded.")
+        logger.warning("cogs/ directory was not found; no Cogs were loaded.")
         return
 
     for file_path in sorted(cog_root.rglob("*.py")):
@@ -123,7 +120,7 @@ async def load_all_cogs() -> None:
         cog_name = file_path.stem
         if cog_name in heavy_cogs or cog_module in heavy_cogs:
             bot.skipped_cogs.add(cog_module)
-            log_print(f"[Skip] Marked heavy cog: {cog_module}")
+            logger.info("Skipping configured heavy Cog: %s", cog_module)
             continue
 
         await load_cog_with_timing(cog_module)
@@ -142,15 +139,17 @@ async def load_cog_with_timing(cog_module: str) -> None:
         elapsed = time.perf_counter() - start
         bot.load_failures.pop(cog_module, None)
         bot.skipped_cogs.discard(cog_module)
-        log_print(f"[{action}] {cog_module} completed in {elapsed:.2f}s")
+        logger.info("%s %s completed in %.2fs", action, cog_module, elapsed)
         if elapsed > HEAVY_THRESHOLD:
-            log_print(
-                f"[Warning] {cog_module} took {elapsed:.2f}s "
-                f"(threshold: {HEAVY_THRESHOLD:.2f}s)"
+            logger.warning(
+                "Cog %s took %.2fs (warning threshold: %.2fs)",
+                cog_module,
+                elapsed,
+                HEAVY_THRESHOLD,
             )
     except Exception as error:
         bot.load_failures[cog_module] = str(error)
-        log_print(f"[Error] Failed to load/reload {cog_module}: {error}")
+        logger.exception("Failed to load/reload Cog %s", cog_module)
 
 
 class CogChangeHandler(FileSystemEventHandler):
@@ -180,7 +179,7 @@ class CogChangeHandler(FileSystemEventHandler):
             return
 
         cog_module = ".".join(relative_path.with_suffix("").parts)
-        log_print(f"[Watchdog] Change detected in {cog_module}")
+        logger.info("Watchdog detected a change in %s", cog_module)
         asyncio.run_coroutine_threadsafe(
             load_cog_with_timing(cog_module),
             self.loop,
@@ -200,7 +199,7 @@ def start_watching(loop: asyncio.AbstractEventLoop) -> None:
     if _observer is not None and _observer.is_alive():
         return
     if not Path("cogs").is_dir():
-        log_print("[Warning] Watchdog was not started because cogs/ is missing.")
+        logger.warning("Watchdog was not started because cogs/ is missing.")
         return
 
     try:
@@ -208,9 +207,9 @@ def start_watching(loop: asyncio.AbstractEventLoop) -> None:
         observer.schedule(CogChangeHandler(loop), path="cogs", recursive=True)
         observer.start()
         _observer = observer
-        log_print("[Watchdog] Cog folder monitoring started.")
+        logger.info("Cog folder monitoring started.")
     except Exception as error:
-        log_print(f"[Warning] Could not start Cog watcher: {error}")
+        logger.exception("Could not start Cog watcher")
 
 
 @tasks.loop(seconds=300)
@@ -228,6 +227,14 @@ async def before_change_status() -> None:
     await bot.wait_until_ready()
 
 
+@change_status.error
+async def on_change_status_error(error: Exception) -> None:
+    logger.error(
+        "Presence rotation task failed and will stop.",
+        exc_info=(type(error), error, error.__traceback__),
+    )
+
+
 async def send_startup_report() -> None:
     if REPORT_CHANNEL_ID is None:
         return
@@ -237,14 +244,14 @@ async def send_startup_report() -> None:
         if channel is None:
             channel = await bot.fetch_channel(REPORT_CHANNEL_ID)
     except (discord.NotFound, discord.Forbidden, discord.HTTPException) as error:
-        log_print(f"[Warning] Could not access startup report channel: {error}")
+        logger.warning("Could not access startup report channel: %s", error)
         return
 
     if not isinstance(channel, (discord.TextChannel, discord.Thread)):
-        log_print("[Warning] REPORT_CHANNEL_ID is not a text channel or thread.")
+        logger.warning("REPORT_CHANNEL_ID is not a text channel or thread.")
         return
 
-    content = log_buffer.getvalue().strip() or "起動ログはありません。"
+    content = get_startup_log().strip() or "起動ログはありません。"
     chunk_size = 3900
     for offset in range(0, len(content), chunk_size):
         embed = discord.Embed(
@@ -255,7 +262,7 @@ async def send_startup_report() -> None:
         try:
             await channel.send(embed=embed)
         except (discord.Forbidden, discord.HTTPException) as error:
-            log_print(f"[Warning] Could not send startup report: {error}")
+            logger.warning("Could not send startup report: %s", error)
             return
 
 
@@ -263,7 +270,7 @@ async def send_startup_report() -> None:
 async def on_ready() -> None:
     global _cogs_loaded, _commands_synced, _startup_reported
 
-    log_print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    logger.info("Logged in as %s (ID: %s)", bot.user, bot.user.id)
 
     # on_ready can run more than once after a gateway reconnect.
     if not _cogs_loaded:
@@ -273,10 +280,10 @@ async def on_ready() -> None:
     if not _commands_synced:
         try:
             synced = await bot.tree.sync()
-            log_print(f"[OK] Synced {len(synced)} slash commands")
+            logger.info("Synced %d slash commands", len(synced))
             _commands_synced = True
-        except Exception as error:
-            log_print(f"[Error] Slash command sync failed: {error}")
+        except Exception:
+            logger.exception("Slash command synchronization failed")
 
     start_watching(asyncio.get_running_loop())
     if not change_status.is_running():
