@@ -136,9 +136,11 @@ class ErrorReportView(discord.ui.View):
 
         for child in self.children:
             child.disabled = True
-        await interaction.response.send_message(
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(
             f"報告を受け付けました。問い合わせID: `{self.tx_id}`",
             ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
 
