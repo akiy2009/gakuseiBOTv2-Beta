@@ -1,0 +1,315 @@
+"""Private, persistent notes and bookmarks for each Discord user."""
+
+from __future__ import annotations
+
+import os
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import urlparse
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+_MAX_ITEMS_PER_USER = 100
+_MAX_TITLE_LENGTH = 100
+_MAX_NOTE_LENGTH = 2000
+_MAX_URL_LENGTH = 2048
+
+
+class ArchiveError(ValueError):
+    """A user-correctable archive operation error."""
+
+
+class PersonalArchiveStore:
+    """SQLite-backed store with per-user ownership checks."""
+
+    def __init__(self, database_path: str | Path = "data/user_data.sqlite3"):
+        self.database_path = Path(database_path)
+
+    def _connect(self) -> sqlite3.Connection:
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(self.database_path, timeout=10)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 10000")
+        return connection
+
+    def initialize(self) -> None:
+        with self._connect() as connection:
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_notes_owner_created
+                    ON notes(user_id, id DESC);
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_bookmarks_owner_created
+                    ON bookmarks(user_id, id DESC);
+                """
+            )
+
+    @staticmethod
+    def _timestamp() -> str:
+        return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    def _check_limit(self, connection: sqlite3.Connection, table: str, user_id: int) -> None:
+        if table not in {"notes", "bookmarks"}:
+            raise ValueError("Unsupported archive table")
+        count = connection.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
+        if count >= _MAX_ITEMS_PER_USER:
+            raise ArchiveError(
+                f"保存上限（{_MAX_ITEMS_PER_USER}件）に達しています。不要な項目を削除してください。"
+            )
+
+    def add_note(self, user_id: int, title: str, content: str) -> int:
+        title, content = title.strip(), content.strip()
+        if not title or len(title) > _MAX_TITLE_LENGTH:
+            raise ArchiveError("タイトルは1〜100文字で入力してください。")
+        if not content or len(content) > _MAX_NOTE_LENGTH:
+            raise ArchiveError("本文は1〜2000文字で入力してください。")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._check_limit(connection, "notes", user_id)
+            cursor = connection.execute(
+                "INSERT INTO notes(user_id, title, content, created_at) VALUES (?, ?, ?, ?)",
+                (user_id, title, content, self._timestamp()),
+            )
+            return int(cursor.lastrowid)
+
+    def list_notes(self, user_id: int, limit: int = 20) -> list[sqlite3.Row]:
+        with self._connect() as connection:
+            return list(connection.execute(
+                "SELECT id, title, created_at FROM notes WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+                (user_id, limit),
+            ))
+
+    def get_note(self, user_id: int, note_id: int) -> sqlite3.Row | None:
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT id, title, content, created_at FROM notes WHERE user_id = ? AND id = ?",
+                (user_id, note_id),
+            ).fetchone()
+
+    def search_notes(self, user_id: int, keyword: str, limit: int = 20) -> list[sqlite3.Row]:
+        pattern = f"%{keyword}%"
+        with self._connect() as connection:
+            return list(connection.execute(
+                """SELECT id, title, created_at FROM notes
+                   WHERE user_id = ? AND (title LIKE ? OR content LIKE ?)
+                   ORDER BY id DESC LIMIT ?""",
+                (user_id, pattern, pattern, limit),
+            ))
+
+    def delete_note(self, user_id: int, note_id: int) -> bool:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM notes WHERE user_id = ? AND id = ?", (user_id, note_id)
+            )
+            return cursor.rowcount > 0
+
+    def add_bookmark(self, user_id: int, title: str, url: str) -> int:
+        title, url = title.strip(), url.strip()
+        parsed = urlparse(url)
+        if (
+            len(url) > _MAX_URL_LENGTH
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+        ):
+            raise ArchiveError("URLは http:// または https:// から始まる有効なURLを入力してください。")
+        if not title or len(title) > _MAX_TITLE_LENGTH:
+            raise ArchiveError("タイトルは1〜100文字で入力してください。")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._check_limit(connection, "bookmarks", user_id)
+            cursor = connection.execute(
+                "INSERT INTO bookmarks(user_id, title, url, created_at) VALUES (?, ?, ?, ?)",
+                (user_id, title, url, self._timestamp()),
+            )
+            return int(cursor.lastrowid)
+
+    def list_bookmarks(self, user_id: int, limit: int = 20) -> list[sqlite3.Row]:
+        with self._connect() as connection:
+            return list(connection.execute(
+                "SELECT id, title, url, created_at FROM bookmarks WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+                (user_id, limit),
+            ))
+
+    def search_bookmarks(self, user_id: int, keyword: str, limit: int = 20) -> list[sqlite3.Row]:
+        pattern = f"%{keyword}%"
+        with self._connect() as connection:
+            return list(connection.execute(
+                """SELECT id, title, url, created_at FROM bookmarks
+                   WHERE user_id = ? AND (title LIKE ? OR url LIKE ?)
+                   ORDER BY id DESC LIMIT ?""",
+                (user_id, pattern, pattern, limit),
+            ))
+
+    def delete_bookmark(self, user_id: int, bookmark_id: int) -> bool:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM bookmarks WHERE user_id = ? AND id = ?",
+                (user_id, bookmark_id),
+            )
+            return cursor.rowcount > 0
+
+
+def _safe_text(value: str, limit: int = 100) -> str:
+    return discord.utils.escape_mentions(discord.utils.escape_markdown(value))[:limit]
+
+
+class PersonalInformationCog(commands.Cog):
+    """Personal notes and bookmarks with owner-only access."""
+
+    note = app_commands.Group(name="note", description="個人メモを保存・検索します")
+    bookmark = app_commands.Group(name="bookmark", description="URLをブックマークします")
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.store = PersonalArchiveStore(
+            os.getenv("USER_DATA_DB", "data/user_data.sqlite3")
+        )
+
+    async def cog_load(self) -> None:
+        self.store.initialize()
+
+    @note.command(name="add", description="メモを新しく保存します")
+    @app_commands.describe(title="メモのタイトル", content="メモの本文（最大2000文字）")
+    async def note_add(self, interaction: discord.Interaction, title: str, content: str) -> None:
+        try:
+            note_id = self.store.add_note(interaction.user.id, title, content)
+        except ArchiveError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"メモを保存しました。ID: **{note_id}**", ephemeral=True
+        )
+
+    @note.command(name="list", description="保存したメモの一覧を表示します")
+    async def note_list(self, interaction: discord.Interaction) -> None:
+        notes = self.store.list_notes(interaction.user.id)
+        if not notes:
+            await interaction.response.send_message("保存されたメモはありません。", ephemeral=True)
+            return
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in notes]
+        embed = discord.Embed(
+            title="保存したメモ",
+            description="\n".join(lines),
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text="最新20件を表示しています。内容は /note view で確認できます。")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @note.command(name="view", description="指定したメモの内容を表示します")
+    @app_commands.describe(note_id="メモID")
+    async def note_view(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
+        row = self.store.get_note(interaction.user.id, note_id)
+        if row is None:
+            await interaction.response.send_message("メモが見つかりません。", ephemeral=True)
+            return
+        embed = discord.Embed(
+            title=_safe_text(row["title"], 256),
+            description=discord.utils.escape_mentions(row["content"]),
+            color=discord.Color.blurple(),
+            timestamp=datetime.fromisoformat(row["created_at"]),
+        )
+        embed.set_footer(text=f"メモ ID: {row['id']}")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @note.command(name="search", description="タイトルや本文からメモを検索します")
+    @app_commands.describe(keyword="検索キーワード")
+    async def note_search(self, interaction: discord.Interaction, keyword: str) -> None:
+        keyword = keyword.strip()
+        if not keyword or len(keyword) > 100:
+            await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
+            return
+        rows = self.store.search_notes(interaction.user.id, keyword)
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in rows]
+        await interaction.response.send_message(
+            "\n".join(lines) if lines else "一致するメモはありません。",
+            ephemeral=True,
+        )
+
+    @note.command(name="delete", description="保存したメモを削除します")
+    @app_commands.describe(note_id="削除するメモID")
+    async def note_delete(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
+        deleted = self.store.delete_note(interaction.user.id, note_id)
+        await interaction.response.send_message(
+            "メモを削除しました。" if deleted else "メモが見つかりません。",
+            ephemeral=True,
+        )
+
+    @bookmark.command(name="add", description="URLをブックマークに保存します")
+    @app_commands.describe(url="保存するURL（http/https）", title="表示名")
+    async def bookmark_add(
+        self, interaction: discord.Interaction, url: str, title: str
+    ) -> None:
+        try:
+            bookmark_id = self.store.add_bookmark(interaction.user.id, title, url)
+        except ArchiveError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await interaction.response.send_message(
+            f"ブックマークを保存しました。ID: **{bookmark_id}**", ephemeral=True
+        )
+
+    @bookmark.command(name="list", description="保存したブックマークを表示します")
+    async def bookmark_list(self, interaction: discord.Interaction) -> None:
+        rows = self.store.list_bookmarks(interaction.user.id)
+        if not rows:
+            await interaction.response.send_message("ブックマークはありません。", ephemeral=True)
+            return
+        lines = [
+            f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>"
+            for row in rows
+        ]
+        embed = discord.Embed(
+            title="ブックマーク",
+            description="\n".join(lines)[:4000],
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text="最新20件を表示しています。")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @bookmark.command(name="search", description="タイトルやURLから検索します")
+    @app_commands.describe(keyword="検索キーワード")
+    async def bookmark_search(self, interaction: discord.Interaction, keyword: str) -> None:
+        keyword = keyword.strip()
+        if not keyword or len(keyword) > 100:
+            await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
+            return
+        rows = self.store.search_bookmarks(interaction.user.id, keyword)
+        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>" for row in rows]
+        await interaction.response.send_message(
+            "\n".join(lines)[:4000] if lines else "一致するブックマークはありません。",
+            ephemeral=True,
+        )
+
+    @bookmark.command(name="delete", description="ブックマークを削除します")
+    @app_commands.describe(bookmark_id="削除するブックマークID")
+    async def bookmark_delete(
+        self, interaction: discord.Interaction, bookmark_id: app_commands.Range[int, 1]
+    ) -> None:
+        deleted = self.store.delete_bookmark(interaction.user.id, bookmark_id)
+        await interaction.response.send_message(
+            "ブックマークを削除しました。" if deleted else "ブックマークが見つかりません。",
+            ephemeral=True,
+        )
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(PersonalInformationCog(bot))
