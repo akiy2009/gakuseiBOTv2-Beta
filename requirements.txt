@@ -9,7 +9,7 @@ psutil>=5.9.0
 requests>=2.28.0
 
 # File change watcher / local configuration
-watchdog>=2.0.0
+watchdog>=7.1.0
 python-dotenv>=1.0.0
 
 # Utilities
