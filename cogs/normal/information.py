@@ -132,14 +132,26 @@ class PersonalArchiveStore:
 
     def add_bookmark(self, user_id: int, title: str, url: str) -> int:
         title, url = title.strip(), url.strip()
-        parsed = urlparse(url)
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.hostname
+            _ = parsed.port
+            valid_hostname = bool(hostname) and bool(hostname.encode("idna"))
+        except (ValueError, UnicodeError):
+            parsed = None
+            valid_hostname = False
         if (
             len(url) > _MAX_URL_LENGTH
+            or parsed is None
             or parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or any(character.isspace() or character in "<>" for character in url)
+            or not valid_hostname
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or "\\" in url
+            or any(character.isspace() or ord(character) < 32 or character in "<>" for character in url)
         ):
-            raise ArchiveError("URLは http:// または https:// から始まる有効なURLを入力してください。")
+            raise ArchiveError("認証情報を含まない有効な http:// または https:// URLを入力してください。")
         if not title or len(title) > _MAX_TITLE_LENGTH:
             raise ArchiveError("タイトルは1〜100文字で入力してください。")
         with self._connect() as connection:
@@ -232,7 +244,9 @@ class PersonalInformationCog(commands.Cog):
             return
         embed = discord.Embed(
             title=_safe_text(row["title"], 256),
-            description=discord.utils.escape_mentions(row["content"]),
+            description=discord.utils.escape_markdown(
+                discord.utils.escape_mentions(row["content"])
+            ),
             color=discord.Color.blurple(),
             timestamp=datetime.fromisoformat(row["created_at"]),
         )
