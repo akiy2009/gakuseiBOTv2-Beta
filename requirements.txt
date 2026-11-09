@@ -13,5 +13,5 @@ watchdog>=7.1.0
 python-dotenv>=1.0.0
 
 # Utilities
-pytz>=2022.0
+pytz>=2026.6
 wikipedia>=1.4.0
