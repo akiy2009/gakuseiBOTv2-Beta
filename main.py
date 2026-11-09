@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import json
+import logging
 import os
 import time
 from pathlib import Path
@@ -208,7 +208,7 @@ def start_watching(loop: asyncio.AbstractEventLoop) -> None:
         observer.start()
         _observer = observer
         logger.info("Cog folder monitoring started.")
-    except Exception as error:
+    except Exception:
         logger.exception("Could not start Cog watcher")
 
 
