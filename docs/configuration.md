@@ -16,7 +16,7 @@ Bot 本体・任意の HSS 時間割連携・テスト・ドキュメント生�
 | `REPORT_CHANNEL_ID` | いいえ | 空欄 | 起動ログの送信先チャンネル ID。未設定なら自動送信しません。 |
 | `FEEDBACK_CHANNEL_ID` | いいえ | 空欄 | `/feedback` の送信先チャンネル ID。 |
 | `HEAVY_THRESHOLD` | いいえ | `1.5` | Cog 読み込み時間の警告閾値（秒）。正の数値以外は既定値を使用します。 |
-| `HEAVY_COGS_PATH` | いいえ | `data/heavy_cogs.json` | 読み込みをスキップする Cog 一覧を保存する JSON ファイル。 |
+| `HEAVY_COGS_PATH` | いいえ | `data/heavy_cogs.json` | 読み込みをスキップする Cog 一覧を保存する JSON ファイル。 |\n| `USER_DATA_DB` | いいえ | `data/user_data.sqlite3` | `/note` と `/bookmark` の個人データを保存する SQLite データベースのパス。Docker では `/app/data` が永続 volume です。 |
 
 ## ログ管理
 
