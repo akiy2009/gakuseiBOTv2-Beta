@@ -57,10 +57,10 @@ def _nonnegative_int(value: str | None, default: int, setting: str) -> int:
     try:
         parsed = int(value)
     except ValueError:
-        sys.stderr.write(f"Invalid {setting}; using {default}.\\n")
+        sys.stderr.write(f"Invalid {setting}; using {default}.\n")
         return default
     if parsed < 0:
-        sys.stderr.write(f"{setting} must not be negative; using {default}.\\n")
+        sys.stderr.write(f"{setting} must not be negative; using {default}.\n")
         return default
     return parsed
 
