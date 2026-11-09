@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from collections.abc import Iterator
 from urllib.parse import urlparse
 
 import discord
@@ -194,7 +194,7 @@ class PersonalInformationCog(commands.Cog):
         )
 
     async def cog_load(self) -> None:
-        self.store.initialize()
+        await asyncio.to_thread(self.store.initialize)
 
     @note.command(name="add", description="メモを新しく保存します")
     @app_commands.describe(title="メモのタイトル", content="メモの本文（最大2000文字）")
@@ -267,6 +267,7 @@ class PersonalInformationCog(commands.Cog):
     async def bookmark_add(
         self, interaction: discord.Interaction, url: str, title: str | None = None
     ) -> None:
+        title = (title or "").strip() or (urlparse(url).hostname or "")
         try:
             bookmark_id = await asyncio.to_thread(self.store.add_bookmark, interaction.user.id, title, url)
         except ArchiveError as error:
