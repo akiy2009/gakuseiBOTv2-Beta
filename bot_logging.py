@@ -90,7 +90,6 @@ def configure_logging(
     root = logging.getLogger()
     for existing in root.handlers[:]:
         root.removeHandler(existing)
-        existing.close()
     root.setLevel(numeric_level)
 
     resolved_max_bytes = (
