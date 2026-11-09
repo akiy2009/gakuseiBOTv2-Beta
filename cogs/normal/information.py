@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Iterator
 from urllib.parse import urlparse
 
 import discord
@@ -28,12 +31,17 @@ class PersonalArchiveStore:
     def __init__(self, database_path: str | Path = "data/user_data.sqlite3"):
         self.database_path = Path(database_path)
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.database_path, timeout=10)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA busy_timeout = 10000")
-        return connection
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def initialize(self) -> None:
         with self._connect() as connection:
@@ -128,7 +136,8 @@ class PersonalArchiveStore:
         if (
             len(url) > _MAX_URL_LENGTH
             or parsed.scheme not in {"http", "https"}
-            or not parsed.netloc
+            or not parsed.hostname
+            or any(character.isspace() or character in "<>" for character in url)
         ):
             raise ArchiveError("URLは http:// または https:// から始まる有効なURLを入力してください。")
         if not title or len(title) > _MAX_TITLE_LENGTH:
@@ -191,7 +200,7 @@ class PersonalInformationCog(commands.Cog):
     @app_commands.describe(title="メモのタイトル", content="メモの本文（最大2000文字）")
     async def note_add(self, interaction: discord.Interaction, title: str, content: str) -> None:
         try:
-            note_id = self.store.add_note(interaction.user.id, title, content)
+            note_id = await asyncio.to_thread(self.store.add_note, interaction.user.id, title, content)
         except ArchiveError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
             return
@@ -201,7 +210,7 @@ class PersonalInformationCog(commands.Cog):
 
     @note.command(name="list", description="保存したメモの一覧を表示します")
     async def note_list(self, interaction: discord.Interaction) -> None:
-        notes = self.store.list_notes(interaction.user.id)
+        notes = await asyncio.to_thread(self.store.list_notes, interaction.user.id)
         if not notes:
             await interaction.response.send_message("保存されたメモはありません。", ephemeral=True)
             return
@@ -217,7 +226,7 @@ class PersonalInformationCog(commands.Cog):
     @note.command(name="view", description="指定したメモの内容を表示します")
     @app_commands.describe(note_id="メモID")
     async def note_view(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
-        row = self.store.get_note(interaction.user.id, note_id)
+        row = await asyncio.to_thread(self.store.get_note, interaction.user.id, note_id)
         if row is None:
             await interaction.response.send_message("メモが見つかりません。", ephemeral=True)
             return
@@ -237,7 +246,7 @@ class PersonalInformationCog(commands.Cog):
         if not keyword or len(keyword) > 100:
             await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
             return
-        rows = self.store.search_notes(interaction.user.id, keyword)
+        rows = await asyncio.to_thread(self.store.search_notes, interaction.user.id, keyword)
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in rows]
         await interaction.response.send_message(
             "\n".join(lines) if lines else "一致するメモはありません。",
@@ -247,7 +256,7 @@ class PersonalInformationCog(commands.Cog):
     @note.command(name="delete", description="保存したメモを削除します")
     @app_commands.describe(note_id="削除するメモID")
     async def note_delete(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
-        deleted = self.store.delete_note(interaction.user.id, note_id)
+        deleted = await asyncio.to_thread(self.store.delete_note, interaction.user.id, note_id)
         await interaction.response.send_message(
             "メモを削除しました。" if deleted else "メモが見つかりません。",
             ephemeral=True,
@@ -256,10 +265,10 @@ class PersonalInformationCog(commands.Cog):
     @bookmark.command(name="add", description="URLをブックマークに保存します")
     @app_commands.describe(url="保存するURL（http/https）", title="表示名")
     async def bookmark_add(
-        self, interaction: discord.Interaction, url: str, title: str
+        self, interaction: discord.Interaction, url: str, title: str | None = None
     ) -> None:
         try:
-            bookmark_id = self.store.add_bookmark(interaction.user.id, title, url)
+            bookmark_id = await asyncio.to_thread(self.store.add_bookmark, interaction.user.id, title, url)
         except ArchiveError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
             return
@@ -269,7 +278,7 @@ class PersonalInformationCog(commands.Cog):
 
     @bookmark.command(name="list", description="保存したブックマークを表示します")
     async def bookmark_list(self, interaction: discord.Interaction) -> None:
-        rows = self.store.list_bookmarks(interaction.user.id)
+        rows = await asyncio.to_thread(self.store.list_bookmarks, interaction.user.id)
         if not rows:
             await interaction.response.send_message("ブックマークはありません。", ephemeral=True)
             return
@@ -292,7 +301,7 @@ class PersonalInformationCog(commands.Cog):
         if not keyword or len(keyword) > 100:
             await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
             return
-        rows = self.store.search_bookmarks(interaction.user.id, keyword)
+        rows = await asyncio.to_thread(self.store.search_bookmarks, interaction.user.id, keyword)
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>" for row in rows]
         await interaction.response.send_message(
             "\n".join(lines)[:4000] if lines else "一致するブックマークはありません。",
@@ -304,7 +313,7 @@ class PersonalInformationCog(commands.Cog):
     async def bookmark_delete(
         self, interaction: discord.Interaction, bookmark_id: app_commands.Range[int, 1]
     ) -> None:
-        deleted = self.store.delete_bookmark(interaction.user.id, bookmark_id)
+        deleted = await asyncio.to_thread(self.store.delete_bookmark, interaction.user.id, bookmark_id)
         await interaction.response.send_message(
             "ブックマークを削除しました。" if deleted else "ブックマークが見つかりません。",
             ephemeral=True,
