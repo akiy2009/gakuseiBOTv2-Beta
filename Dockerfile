@@ -15,7 +15,7 @@ RUN python -m pip install --upgrade pip \
     && if [ "$INSTALL_HSS" = "true" ]; then python -m pip install -r /app/requirements-hss.txt; fi
 
 COPY --chown=bot:bot . /app/
-RUN mkdir -p /app/data && chown -R bot:bot /app
+RUN mkdir -p /app/data /app/logs && chown -R bot:bot /app
 
 USER bot
 
