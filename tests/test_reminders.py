@@ -60,6 +60,10 @@ def test_reminder_validation_and_limits(tmp_path):
 
 
 def test_parse_due_at_uses_japan_time():
-    value = parse_due_at("2099-01-02 03:04")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    future = datetime.now(ZoneInfo("Asia/Tokyo")) + timedelta(days=30)
+    value = parse_due_at(future.strftime("%Y-%m-%d %H:%M"))
     assert value.tzinfo is not None
-    assert value.astimezone(timezone(timedelta(hours=9))).hour == 3
+    assert value.astimezone(timezone(timedelta(hours=9))).hour == future.hour
