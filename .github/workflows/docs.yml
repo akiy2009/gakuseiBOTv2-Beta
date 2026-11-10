@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "cogs/**/*.py"
+      - "main.py"
+      - "scripts/**"
+      - ".env.example"
+      - "tests/test_documentation_generator.py"
       - "docs/**"
       - "requirements*.txt"
       - "README.md"
@@ -51,6 +55,12 @@ jobs:
 
       - name: Check Python syntax
         run: python -m compileall -q main.py cogs
+
+      - name: Generate source-driven references
+        run: python scripts/generate_docs.py
+
+      - name: Test documentation generator
+        run: python -m pytest -q tests/test_documentation_generator.py
 
       - name: Build manual documentation
         run: sphinx-build -W --keep-going -b html docs build/manual-docs
