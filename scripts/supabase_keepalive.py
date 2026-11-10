@@ -84,7 +84,11 @@ def run_keepalive(
         raise KeepaliveError("SUPABASE_SERVICE_ROLE_KEY is not configured.")
     base_url = validate_project_url(project_url)
     local_now = (now or datetime.now(JST)).astimezone(JST)
-    check_type = "monday_weekly" if local_now.weekday() == 0 else "scheduled"
+    check_type = (
+        "monday_weekly"
+        if local_now.weekday() == 0 and local_now.hour == 6
+        else "scheduled"
+    )
     checked_at = local_now.isoformat(timespec="seconds")
 
     endpoint = f"{base_url}/rest/v1/{TABLE}"
