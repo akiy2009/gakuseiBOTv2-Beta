@@ -1,0 +1,69 @@
+name: Supabase database keepalive
+
+on:
+  # GitHub Actions cron uses UTC. These run at 06:00, 14:00, and 22:00 JST.
+  # The Monday 06:00 JST run is marked as the weekly check by the script.
+  schedule:
+    - cron: "0 21 * * *"
+    - cron: "0 5 * * *"
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  database-heartbeat:
+    name: Verify Supabase database activity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Record and verify database heartbeat
+        id: heartbeat
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            echo "::notice::Supabase keepalive skipped. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in repository Actions secrets."
+            {
+              echo "## Supabase keepalive"
+              echo "- **Status:** skipped — required repository secrets are not configured."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python scripts/supabase_keepalive.py | tee keepalive-result.txt
+          {
+            echo "## Supabase keepalive"
+            echo "- **Status:** database write and read-back verification succeeded."
+            echo "- **Schedule:** 06:00 / 14:00 / 22:00 JST."
+            echo "- **Run:** $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            cat keepalive-result.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report failure in job summary
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## Supabase keepalive"
+            echo "- **Status:** failed."
+            echo "- Check the step logs and Supabase project status. Credentials and response bodies are intentionally not printed."
+          } >> "$GITHUB_STEP_SUMMARY"

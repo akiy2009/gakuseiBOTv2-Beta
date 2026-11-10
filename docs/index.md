@@ -11,6 +11,7 @@ getting-started
 configuration
 architecture
 operations
+supabase-keepalive
 reminders
 development
 gc/rule
@@ -22,6 +23,7 @@ study/api-reference
 
 - [セットアップ](getting-started.md)
 - [設定一覧](configuration.md)
+- [Supabase 定期ヘルスチェック](supabase-keepalive.md)
 - [リマインダー機能](reminders.md)
 - [HSS 時間割連携](study/hss-integration.md)
 - [テストとドキュメントのビルド](development.md)
