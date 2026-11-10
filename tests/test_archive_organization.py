@@ -43,7 +43,9 @@ def test_folder_and_tag_organization_is_owner_scoped(tmp_path):
     store.create_folder(10, "研究")
     store.organize_note(10, note_id, "研究", ["太陽", "X線"])
 
-    assert [row["id"] for row in store.search_notes(10, folder_name="研究")] == [note_id]
+    assert [row["id"] for row in store.search_notes(10, folder_name="研究")] == [
+        note_id
+    ]
     assert [row["id"] for row in store.search_notes(10, tag_name="太陽")] == [note_id]
     assert store.search_notes(20, folder_name="研究") == []
     assert store.search_notes(20, tag_name="太陽") == []

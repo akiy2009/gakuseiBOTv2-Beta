@@ -7,7 +7,7 @@ import os
 import sqlite3
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -71,9 +71,11 @@ class PersonalArchiveStore:
 
     @staticmethod
     def _timestamp() -> str:
-        return datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return datetime.now(UTC).isoformat(timespec="seconds")
 
-    def _check_limit(self, connection: sqlite3.Connection, table: str, user_id: int) -> None:
+    def _check_limit(
+        self, connection: sqlite3.Connection, table: str, user_id: int
+    ) -> None:
         if table not in {"notes", "bookmarks"}:
             raise ValueError("Unsupported archive table")
         count = connection.execute(
@@ -99,12 +101,16 @@ class PersonalArchiveStore:
             )
             return int(cursor.lastrowid)
 
-    def list_notes(self, user_id: int, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
+    def list_notes(
+        self, user_id: int, limit: int = _MAX_ITEMS_PER_USER
+    ) -> list[sqlite3.Row]:
         with self._connect() as connection:
-            return list(connection.execute(
-                "SELECT id, title, created_at FROM notes WHERE user_id = ? ORDER BY id DESC LIMIT ?",
-                (user_id, limit),
-            ))
+            return list(
+                connection.execute(
+                    "SELECT id, title, created_at FROM notes WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+                    (user_id, limit),
+                )
+            )
 
     def get_note(self, user_id: int, note_id: int) -> sqlite3.Row | None:
         with self._connect() as connection:
@@ -113,16 +119,20 @@ class PersonalArchiveStore:
                 (user_id, note_id),
             ).fetchone()
 
-    def search_notes(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
+    def search_notes(
+        self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER
+    ) -> list[sqlite3.Row]:
         escaped = keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_")
         pattern = f"%{escaped}%"
         with self._connect() as connection:
-            return list(connection.execute(
-                """SELECT id, title, created_at FROM notes
+            return list(
+                connection.execute(
+                    """SELECT id, title, created_at FROM notes
                    WHERE user_id = ? AND (title LIKE ? ESCAPE '!' OR content LIKE ? ESCAPE '!')
                    ORDER BY id DESC LIMIT ?""",
-                (user_id, pattern, pattern, limit),
-            ))
+                    (user_id, pattern, pattern, limit),
+                )
+            )
 
     def delete_note(self, user_id: int, note_id: int) -> bool:
         with self._connect() as connection:
@@ -150,9 +160,14 @@ class PersonalArchiveStore:
             or parsed.username is not None
             or parsed.password is not None
             or "\\" in url
-            or any(character.isspace() or ord(character) < 32 or character in "<>" for character in url)
+            or any(
+                character.isspace() or ord(character) < 32 or character in "<>"
+                for character in url
+            )
         ):
-            raise ArchiveError("認証情報を含まない有効な http:// または https:// URLを入力してください。")
+            raise ArchiveError(
+                "認証情報を含まない有効な http:// または https:// URLを入力してください。"
+            )
         if not title:
             title = hostname or ""
         if not title or len(title) > _MAX_TITLE_LENGTH:
@@ -166,23 +181,31 @@ class PersonalArchiveStore:
             )
             return int(cursor.lastrowid)
 
-    def list_bookmarks(self, user_id: int, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
+    def list_bookmarks(
+        self, user_id: int, limit: int = _MAX_ITEMS_PER_USER
+    ) -> list[sqlite3.Row]:
         with self._connect() as connection:
-            return list(connection.execute(
-                "SELECT id, title, url, created_at FROM bookmarks WHERE user_id = ? ORDER BY id DESC LIMIT ?",
-                (user_id, limit),
-            ))
+            return list(
+                connection.execute(
+                    "SELECT id, title, url, created_at FROM bookmarks WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+                    (user_id, limit),
+                )
+            )
 
-    def search_bookmarks(self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER) -> list[sqlite3.Row]:
+    def search_bookmarks(
+        self, user_id: int, keyword: str, limit: int = _MAX_ITEMS_PER_USER
+    ) -> list[sqlite3.Row]:
         escaped = keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_")
         pattern = f"%{escaped}%"
         with self._connect() as connection:
-            return list(connection.execute(
-                """SELECT id, title, url, created_at FROM bookmarks
+            return list(
+                connection.execute(
+                    """SELECT id, title, url, created_at FROM bookmarks
                    WHERE user_id = ? AND (title LIKE ? ESCAPE '!' OR url LIKE ? ESCAPE '!')
                    ORDER BY id DESC LIMIT ?""",
-                (user_id, pattern, pattern, limit),
-            ))
+                    (user_id, pattern, pattern, limit),
+                )
+            )
 
     def delete_bookmark(self, user_id: int, bookmark_id: int) -> bool:
         with self._connect() as connection:
@@ -212,7 +235,10 @@ class ArchivePager(discord.ui.View):
         current_page: list[str] = []
         current_length = 0
         for entry in entries:
-            if current_page and (len(current_page) >= _PAGE_SIZE or current_length + len(entry) + 1 > 3500):
+            if current_page and (
+                len(current_page) >= _PAGE_SIZE
+                or current_length + len(entry) + 1 > 3500
+            ):
                 self.pages.append(current_page)
                 current_page = []
                 current_length = 0
@@ -230,10 +256,14 @@ class ArchivePager(discord.ui.View):
         visible = self.pages[self.page]
         embed = discord.Embed(
             title=self.title,
-            description="\n".join(visible) if visible else "表示できる項目はありません。",
+            description="\n".join(visible)
+            if visible
+            else "表示できる項目はありません。",
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text=f"{self.page + 1} / {self._page_count()} ページ ・ 全 {len(self.entries)} 件")
+        embed.set_footer(
+            text=f"{self.page + 1} / {self._page_count()} ページ ・ 全 {len(self.entries)} 件"
+        )
         return embed
 
     def _sync_buttons(self) -> None:
@@ -242,18 +272,24 @@ class ArchivePager(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.owner_id:
-            await interaction.response.send_message("この一覧を操作できるのは実行した本人だけです。", ephemeral=True)
+            await interaction.response.send_message(
+                "この一覧を操作できるのは実行した本人だけです。", ephemeral=True
+            )
             return False
         return True
 
     @discord.ui.button(label="前へ", style=discord.ButtonStyle.secondary)
-    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def previous(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
         self.page = max(0, self.page - 1)
         self._sync_buttons()
         await interaction.response.edit_message(embed=self.make_embed(), view=self)
 
     @discord.ui.button(label="次へ", style=discord.ButtonStyle.secondary)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def next(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
         self.page = min(self._page_count() - 1, self.page + 1)
         self._sync_buttons()
         await interaction.response.edit_message(embed=self.make_embed(), view=self)
@@ -262,7 +298,9 @@ class ArchivePager(discord.ui.View):
 class DeleteConfirmationView(discord.ui.View):
     """Owner-only confirmation before deleting a saved item."""
 
-    def __init__(self, owner_id: int, delete_action: Callable[[], Awaitable[bool]], label: str):
+    def __init__(
+        self, owner_id: int, delete_action: Callable[[], Awaitable[bool]], label: str
+    ):
         super().__init__(timeout=60)
         self.owner_id = owner_id
         self.delete_action = delete_action
@@ -270,32 +308,46 @@ class DeleteConfirmationView(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.owner_id:
-            await interaction.response.send_message("この確認画面を操作できるのは実行した本人だけです。", ephemeral=True)
+            await interaction.response.send_message(
+                "この確認画面を操作できるのは実行した本人だけです。", ephemeral=True
+            )
             return False
         return True
 
     @discord.ui.button(label="削除する", style=discord.ButtonStyle.danger)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def confirm(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
         deleted = await self.delete_action()
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
-        message = f"{self.label}を削除しました。" if deleted else f"{self.label}が見つかりません。"
+        message = (
+            f"{self.label}を削除しました。"
+            if deleted
+            else f"{self.label}が見つかりません。"
+        )
         await interaction.response.edit_message(content=message, embed=None, view=self)
 
     @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def cancel(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
-        await interaction.response.edit_message(content="削除をキャンセルしました。", embed=None, view=self)
+        await interaction.response.edit_message(
+            content="削除をキャンセルしました。", embed=None, view=self
+        )
 
 
 class PersonalInformationCog(commands.Cog):
     """Personal notes and bookmarks with owner-only access."""
 
     note = app_commands.Group(name="note", description="個人メモを保存・検索します")
-    bookmark = app_commands.Group(name="bookmark", description="URLをブックマークします")
+    bookmark = app_commands.Group(
+        name="bookmark", description="URLをブックマークします"
+    )
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -308,9 +360,13 @@ class PersonalInformationCog(commands.Cog):
 
     @note.command(name="add", description="メモを新しく保存します")
     @app_commands.describe(title="メモのタイトル", content="メモの本文（最大2000文字）")
-    async def note_add(self, interaction: discord.Interaction, title: str, content: str) -> None:
+    async def note_add(
+        self, interaction: discord.Interaction, title: str, content: str
+    ) -> None:
         try:
-            note_id = await asyncio.to_thread(self.store.add_note, interaction.user.id, title, content)
+            note_id = await asyncio.to_thread(
+                self.store.add_note, interaction.user.id, title, content
+            )
         except ArchiveError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
             return
@@ -322,18 +378,26 @@ class PersonalInformationCog(commands.Cog):
     async def note_list(self, interaction: discord.Interaction) -> None:
         notes = await asyncio.to_thread(self.store.list_notes, interaction.user.id)
         if not notes:
-            await interaction.response.send_message("保存されたメモはありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "保存されたメモはありません。", ephemeral=True
+            )
             return
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in notes]
         view = ArchivePager(interaction.user.id, "保存したメモ", lines)
-        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
+        await interaction.response.send_message(
+            embed=view.make_embed(), view=view, ephemeral=True
+        )
 
     @note.command(name="view", description="指定したメモの内容を表示します")
     @app_commands.describe(note_id="メモID")
-    async def note_view(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
+    async def note_view(
+        self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]
+    ) -> None:
         row = await asyncio.to_thread(self.store.get_note, interaction.user.id, note_id)
         if row is None:
-            await interaction.response.send_message("メモが見つかりません。", ephemeral=True)
+            await interaction.response.send_message(
+                "メモが見つかりません。", ephemeral=True
+            )
             return
         embed = discord.Embed(
             title=_safe_text(row["title"], 256),
@@ -351,26 +415,40 @@ class PersonalInformationCog(commands.Cog):
     async def note_search(self, interaction: discord.Interaction, keyword: str) -> None:
         keyword = keyword.strip()
         if not keyword or len(keyword) > 100:
-            await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
+            await interaction.response.send_message(
+                "検索語は1〜100文字で入力してください。", ephemeral=True
+            )
             return
-        rows = await asyncio.to_thread(self.store.search_notes, interaction.user.id, keyword)
+        rows = await asyncio.to_thread(
+            self.store.search_notes, interaction.user.id, keyword
+        )
         if not rows:
-            await interaction.response.send_message("一致するメモはありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "一致するメモはありません。", ephemeral=True
+            )
             return
         lines = [f"`{row['id']}` **{_safe_text(row['title'])}**" for row in rows]
         view = ArchivePager(interaction.user.id, "メモの検索結果", lines)
-        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
+        await interaction.response.send_message(
+            embed=view.make_embed(), view=view, ephemeral=True
+        )
 
     @note.command(name="delete", description="保存したメモを削除します")
     @app_commands.describe(note_id="削除するメモID")
-    async def note_delete(self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]) -> None:
+    async def note_delete(
+        self, interaction: discord.Interaction, note_id: app_commands.Range[int, 1]
+    ) -> None:
         row = await asyncio.to_thread(self.store.get_note, interaction.user.id, note_id)
         if row is None:
-            await interaction.response.send_message("メモが見つかりません。", ephemeral=True)
+            await interaction.response.send_message(
+                "メモが見つかりません。", ephemeral=True
+            )
             return
         view = DeleteConfirmationView(
             interaction.user.id,
-            lambda: asyncio.to_thread(self.store.delete_note, interaction.user.id, note_id),
+            lambda: asyncio.to_thread(
+                self.store.delete_note, interaction.user.id, note_id
+            ),
             "メモ",
         )
         await interaction.response.send_message(
@@ -386,7 +464,9 @@ class PersonalInformationCog(commands.Cog):
     ) -> None:
         title = (title or "").strip()
         try:
-            bookmark_id = await asyncio.to_thread(self.store.add_bookmark, interaction.user.id, title, url)
+            bookmark_id = await asyncio.to_thread(
+                self.store.add_bookmark, interaction.user.id, title, url
+            )
         except ArchiveError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
             return
@@ -398,39 +478,65 @@ class PersonalInformationCog(commands.Cog):
     async def bookmark_list(self, interaction: discord.Interaction) -> None:
         rows = await asyncio.to_thread(self.store.list_bookmarks, interaction.user.id)
         if not rows:
-            await interaction.response.send_message("ブックマークはありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "ブックマークはありません。", ephemeral=True
+            )
             return
-        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>" for row in rows]
+        lines = [
+            f"`{row['id']}` **{_safe_text(row['title'])}**\n<{row['url']}>"
+            for row in rows
+        ]
         view = ArchivePager(interaction.user.id, "ブックマーク", lines)
-        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
+        await interaction.response.send_message(
+            embed=view.make_embed(), view=view, ephemeral=True
+        )
 
     @bookmark.command(name="search", description="タイトルやURLから検索します")
     @app_commands.describe(keyword="検索キーワード")
-    async def bookmark_search(self, interaction: discord.Interaction, keyword: str) -> None:
+    async def bookmark_search(
+        self, interaction: discord.Interaction, keyword: str
+    ) -> None:
         keyword = keyword.strip()
         if not keyword or len(keyword) > 100:
-            await interaction.response.send_message("検索語は1〜100文字で入力してください。", ephemeral=True)
+            await interaction.response.send_message(
+                "検索語は1〜100文字で入力してください。", ephemeral=True
+            )
             return
-        rows = await asyncio.to_thread(self.store.search_bookmarks, interaction.user.id, keyword)
+        rows = await asyncio.to_thread(
+            self.store.search_bookmarks, interaction.user.id, keyword
+        )
         if not rows:
-            await interaction.response.send_message("一致するブックマークはありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "一致するブックマークはありません。", ephemeral=True
+            )
             return
-        lines = [f"`{row['id']}` **{_safe_text(row['title'])}**\\n<{row['url']}>" for row in rows]
+        lines = [
+            f"`{row['id']}` **{_safe_text(row['title'])}**\\n<{row['url']}>"
+            for row in rows
+        ]
         view = ArchivePager(interaction.user.id, "ブックマークの検索結果", lines)
-        await interaction.response.send_message(embed=view.make_embed(), view=view, ephemeral=True)
+        await interaction.response.send_message(
+            embed=view.make_embed(), view=view, ephemeral=True
+        )
 
     @bookmark.command(name="delete", description="ブックマークを削除します")
     @app_commands.describe(bookmark_id="削除するブックマークID")
     async def bookmark_delete(
         self, interaction: discord.Interaction, bookmark_id: app_commands.Range[int, 1]
     ) -> None:
-        rows = await asyncio.to_thread(self.store.list_bookmarks, interaction.user.id, _MAX_ITEMS_PER_USER)
+        rows = await asyncio.to_thread(
+            self.store.list_bookmarks, interaction.user.id, _MAX_ITEMS_PER_USER
+        )
         if not any(row["id"] == bookmark_id for row in rows):
-            await interaction.response.send_message("ブックマークが見つかりません。", ephemeral=True)
+            await interaction.response.send_message(
+                "ブックマークが見つかりません。", ephemeral=True
+            )
             return
         view = DeleteConfirmationView(
             interaction.user.id,
-            lambda: asyncio.to_thread(self.store.delete_bookmark, interaction.user.id, bookmark_id),
+            lambda: asyncio.to_thread(
+                self.store.delete_bookmark, interaction.user.id, bookmark_id
+            ),
             "ブックマーク",
         )
         await interaction.response.send_message(
@@ -438,7 +544,6 @@ class PersonalInformationCog(commands.Cog):
             view=view,
             ephemeral=True,
         )
-
 
 
 async def setup(bot: commands.Bot) -> None:

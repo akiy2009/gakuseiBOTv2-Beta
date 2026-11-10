@@ -75,7 +75,6 @@ _startup_reported = False
 _observer: Observer | None = None
 
 
-
 def load_heavy_cog_list() -> list[str]:
     """Return the configured list, recovering safely from a missing/broken file."""
     if not HEAVY_COGS_PATH.exists():

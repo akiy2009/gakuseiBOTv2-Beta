@@ -60,6 +60,7 @@ def test_bookmarks_validate_urls_and_are_user_scoped(tmp_path):
     assert store.delete_bookmark(2, bookmark_id) is False
     assert store.delete_bookmark(1, bookmark_id) is True
 
+
 def test_bookmark_rejects_malformed_authority_and_credentials(tmp_path):
     store = make_store(tmp_path)
     invalid_urls = [

@@ -96,7 +96,9 @@ class NoteOrganizationStore:
                     "SELECT COUNT(*) FROM note_folders WHERE user_id = ?", (user_id,)
                 ).fetchone()[0]
                 if count >= _MAX_FOLDERS:
-                    raise OrganizationError(f"フォルダは最大{_MAX_FOLDERS}個まで作成できます。")
+                    raise OrganizationError(
+                        f"フォルダは最大{_MAX_FOLDERS}個まで作成できます。"
+                    )
                 cursor = db.execute(
                     "INSERT INTO note_folders(user_id, name) VALUES (?, ?)",
                     (user_id, name),
@@ -112,15 +114,17 @@ class NoteOrganizationStore:
 
     def list_folders(self, user_id: int) -> list[sqlite3.Row]:
         with closing(self._connect()) as db:
-            return list(db.execute(
-                """SELECT f.id, f.name, COUNT(m.note_id) AS note_count
+            return list(
+                db.execute(
+                    """SELECT f.id, f.name, COUNT(m.note_id) AS note_count
                    FROM note_folders f
                    LEFT JOIN note_folder_map m
                      ON m.folder_id = f.id AND m.user_id = f.user_id
                    WHERE f.user_id = ?
                    GROUP BY f.id ORDER BY f.name COLLATE NOCASE""",
-                (user_id,),
-            ))
+                    (user_id,),
+                )
+            )
 
     def delete_folder(self, user_id: int, folder_id: int) -> bool:
         with closing(self._connect()) as db:
@@ -135,12 +139,18 @@ class NoteOrganizationStore:
     def organize_note(
         self, user_id: int, note_id: int, folder_name: str | None, tag_names: list[str]
     ) -> None:
-        cleaned_tags = [self._validate_name(tag, "タグ") for tag in tag_names if tag.strip()]
+        cleaned_tags = [
+            self._validate_name(tag, "タグ") for tag in tag_names if tag.strip()
+        ]
         if len(cleaned_tags) > _MAX_TAGS_PER_NOTE:
-            raise OrganizationError(f"1件のメモに付けられるタグは最大{_MAX_TAGS_PER_NOTE}個です。")
+            raise OrganizationError(
+                f"1件のメモに付けられるタグは最大{_MAX_TAGS_PER_NOTE}個です。"
+            )
         if len({tag.casefold() for tag in cleaned_tags}) != len(cleaned_tags):
             raise OrganizationError("同じタグを重複して指定できません。")
-        folder_name = self._validate_name(folder_name, "フォルダ") if folder_name else None
+        folder_name = (
+            self._validate_name(folder_name, "フォルダ") if folder_name else None
+        )
 
         with closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
@@ -158,7 +168,9 @@ class NoteOrganizationStore:
                 ).fetchone()
                 if folder is None:
                     db.rollback()
-                    raise OrganizationError("フォルダが見つかりません。先に作成してください。")
+                    raise OrganizationError(
+                        "フォルダが見つかりません。先に作成してください。"
+                    )
                 folder_id = int(folder["id"])
 
             db.execute(
@@ -200,27 +212,35 @@ class NoteOrganizationStore:
         joins = ""
         if folder_name:
             joins += " JOIN note_folder_map fm ON fm.note_id = n.id AND fm.user_id = n.user_id"
-            joins += " JOIN note_folders f ON f.id = fm.folder_id AND f.user_id = fm.user_id"
+            joins += (
+                " JOIN note_folders f ON f.id = fm.folder_id AND f.user_id = fm.user_id"
+            )
             clauses.append("f.name = ?")
             params.append(self._validate_name(folder_name, "フォルダ"))
         if tag_name:
-            joins += " JOIN note_tag_map tm ON tm.note_id = n.id AND tm.user_id = n.user_id"
+            joins += (
+                " JOIN note_tag_map tm ON tm.note_id = n.id AND tm.user_id = n.user_id"
+            )
             joins += " JOIN note_tags t ON t.id = tm.tag_id AND t.user_id = tm.user_id"
             clauses.append("t.name = ?")
             params.append(self._validate_name(tag_name, "タグ"))
         with closing(self._connect()) as db:
-            return list(db.execute(
-                f"""SELECT DISTINCT n.id, n.title, n.created_at FROM notes n
-                    {joins} WHERE {' AND '.join(clauses)}
+            return list(
+                db.execute(
+                    f"""SELECT DISTINCT n.id, n.title, n.created_at FROM notes n
+                    {joins} WHERE {" AND ".join(clauses)}
                     ORDER BY n.id DESC LIMIT 100""",
-                params,
-            ))
+                    params,
+                )
+            )
 
 
 class NoteOrganizationCog(commands.Cog):
     """Slash commands for organizing private notes."""
 
-    archive = app_commands.Group(name="archive", description="メモをフォルダとタグで整理します")
+    archive = app_commands.Group(
+        name="archive", description="メモをフォルダとタグで整理します"
+    )
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -249,7 +269,9 @@ class NoteOrganizationCog(commands.Cog):
     async def folders(self, interaction: discord.Interaction) -> None:
         rows = await asyncio.to_thread(self.store.list_folders, interaction.user.id)
         if not rows:
-            await interaction.response.send_message("フォルダはまだありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "フォルダはまだありません。", ephemeral=True
+            )
             return
         lines = [
             f"**{discord.utils.escape_markdown(row['name'])}** — {row['note_count']}件（ID: {row['id']}）"
@@ -258,7 +280,9 @@ class NoteOrganizationCog(commands.Cog):
         embed = discord.Embed(title="メモフォルダ", description="\n".join(lines))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @archive.command(name="folder-delete", description="フォルダを削除します（メモ本体は残ります）")
+    @archive.command(
+        name="folder-delete", description="フォルダを削除します（メモ本体は残ります）"
+    )
     async def folder_delete(
         self, interaction: discord.Interaction, folder_id: app_commands.Range[int, 1]
     ) -> None:
@@ -267,7 +291,8 @@ class NoteOrganizationCog(commands.Cog):
         )
         message = (
             "フォルダを削除しました。メモ本体とタグは保持されています。"
-            if deleted else "フォルダが見つかりません。"
+            if deleted
+            else "フォルダが見つかりません。"
         )
         await interaction.response.send_message(message, ephemeral=True)
 
@@ -287,7 +312,11 @@ class NoteOrganizationCog(commands.Cog):
         tag_names = [part.strip() for part in (tags or "").split(",") if part.strip()]
         try:
             await asyncio.to_thread(
-                self.store.organize_note, interaction.user.id, note_id, folder, tag_names
+                self.store.organize_note,
+                interaction.user.id,
+                note_id,
+                folder,
+                tag_names,
             )
         except OrganizationError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
@@ -296,10 +325,15 @@ class NoteOrganizationCog(commands.Cog):
             f"メモ ID {note_id} の整理内容を更新しました。", ephemeral=True
         )
 
-    @archive.command(name="search", description="フォルダ名またはタグ名でメモを検索します")
+    @archive.command(
+        name="search", description="フォルダ名またはタグ名でメモを検索します"
+    )
     @app_commands.describe(folder="フォルダ名", tag="タグ名")
     async def search(
-        self, interaction: discord.Interaction, folder: str | None = None, tag: str | None = None
+        self,
+        interaction: discord.Interaction,
+        folder: str | None = None,
+        tag: str | None = None,
     ) -> None:
         try:
             rows = await asyncio.to_thread(
@@ -309,7 +343,9 @@ class NoteOrganizationCog(commands.Cog):
             await interaction.response.send_message(str(error), ephemeral=True)
             return
         if not rows:
-            await interaction.response.send_message("条件に一致するメモはありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "条件に一致するメモはありません。", ephemeral=True
+            )
             return
         lines = [
             f"`{row['id']}` **{discord.utils.escape_markdown(row['title'])}**"

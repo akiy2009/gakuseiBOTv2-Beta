@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -13,7 +13,7 @@ def make_store(tmp_path):
 
 def test_reminder_persists_and_is_owner_scoped(tmp_path):
     store = make_store(tmp_path)
-    due = datetime.now(timezone.utc) + timedelta(hours=1)
+    due = datetime.now(UTC) + timedelta(hours=1)
     reminder_id = store.add(10, "研究発表の準備", due)
 
     restarted = ReminderStore(tmp_path / "data" / "reminders.sqlite3")
@@ -26,7 +26,7 @@ def test_reminder_persists_and_is_owner_scoped(tmp_path):
 
 def test_due_reminders_are_claimed_once_and_recovered_after_lease(tmp_path):
     store = make_store(tmp_path)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     reminder_id = store.add(10, "通知", now + timedelta(seconds=1))
     due_now = now + timedelta(seconds=2)
 
@@ -41,7 +41,7 @@ def test_due_reminders_are_claimed_once_and_recovered_after_lease(tmp_path):
 
 def test_complete_and_snooze_are_owner_scoped(tmp_path):
     store = make_store(tmp_path)
-    reminder_id = store.add(10, "課題", datetime.now(timezone.utc) + timedelta(hours=1))
+    reminder_id = store.add(10, "課題", datetime.now(UTC) + timedelta(hours=1))
     assert store.snooze(20, reminder_id, 10) is False
     assert store.complete(20, reminder_id) is False
     assert store.snooze(10, reminder_id, 10) is True
@@ -51,9 +51,9 @@ def test_complete_and_snooze_are_owner_scoped(tmp_path):
 def test_reminder_validation_and_limits(tmp_path):
     store = make_store(tmp_path)
     with pytest.raises(ReminderError):
-        store.add(10, " ", datetime.now(timezone.utc) + timedelta(hours=1))
+        store.add(10, " ", datetime.now(UTC) + timedelta(hours=1))
     with pytest.raises(ReminderError):
-        store.add(10, "x" * 1001, datetime.now(timezone.utc) + timedelta(hours=1))
+        store.add(10, "x" * 1001, datetime.now(UTC) + timedelta(hours=1))
     with pytest.raises(ReminderError):
         store.snooze(10, 1, 10081)
     with pytest.raises(ReminderError):

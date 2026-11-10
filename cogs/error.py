@@ -55,7 +55,9 @@ class ErrorHandler(commands.Cog):
         if isinstance(error, commands.CommandNotFound):
             return None
         if isinstance(error, commands.CommandOnCooldown):
-            return "このコマンドはクールダウン中です。少し待ってから再試行してください。"
+            return (
+                "このコマンドはクールダウン中です。少し待ってから再試行してください。"
+            )
         if isinstance(error, commands.MissingPermissions):
             return "このコマンドを実行するための権限がありません。"
         if isinstance(error, commands.BotMissingPermissions):
@@ -113,7 +115,9 @@ class ErrorHandler(commands.Cog):
             color=color,
         )
         embed.add_field(name="処理ID", value=tx_id, inline=False)
-        embed.set_footer(text="問題が解決しない場合は、この処理IDを添えて開発者へご連絡ください。")
+        embed.set_footer(
+            text="問題が解決しない場合は、この処理IDを添えて開発者へご連絡ください。"
+        )
 
         try:
             if interaction.response.is_done():
