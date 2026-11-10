@@ -18,6 +18,10 @@ on:
     branches: [main]
     paths:
       - "cogs/**/*.py"
+      - "main.py"
+      - "scripts/**"
+      - ".env.example"
+      - "tests/test_documentation_generator.py"
       - "docs/**"
       - "requirements*.txt"
       - "README.md"
