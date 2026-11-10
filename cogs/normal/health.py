@@ -189,15 +189,15 @@ class HealthCog(commands.Cog):
                         embed=embed, allowed_mentions=discord.AllowedMentions.none()
                     )
                     delivered = True
-            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            except Exception:
                 logger.exception("Could not send health alert to configured channel")
         for user_id in sorted(self.admin_ids):
             try:
                 user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
                 await user.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
                 delivered = True
-            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-                logger.warning("Could not deliver health alert to administrator ID %s", user_id)
+            except Exception:
+                logger.warning("Could not deliver health alert to administrator ID %s", user_id, exc_info=True)
         if not delivered:
             logger.error(
                 "Health alert could not be delivered; configure HEALTH_ALERT_CHANNEL_ID "
@@ -213,12 +213,13 @@ class HealthCog(commands.Cog):
                 if result.ok:
                     self.failure_counts[result.name] = 0
                     if result.name in self.alerted:
-                        self.alerted.remove(result.name)
-                        await self.notify_admins(
+                        delivered = await self.notify_admins(
                             f"✅ {result.name} recovered",
                             f"**{result.name}** is healthy again.\n{result.detail}",
                             recovered=True,
                         )
+                        if delivered:
+                            self.alerted.remove(result.name)
                     continue
                 failures = self.failure_counts.get(result.name, 0) + 1
                 self.failure_counts[result.name] = failures
@@ -235,7 +236,11 @@ class HealthCog(commands.Cog):
 
     @tasks.loop(seconds=DEFAULT_INTERVAL)
     async def monitor_loop(self) -> None:
-        await self.process_results(await self.run_checks())
+        try:
+            await self.process_results(await self.run_checks())
+        except Exception:
+            # A notification or transient runtime error must not permanently stop monitoring.
+            logger.exception("Health monitoring cycle failed; the next cycle will retry.")
 
     @monitor_loop.before_loop
     async def before_monitor_loop(self) -> None:
