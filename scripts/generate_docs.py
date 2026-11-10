@@ -57,11 +57,11 @@ def collect_commands() -> list[dict[str, str]]:
                     if argument.arg in {"self", "cls", "ctx", "interaction"}:
                         continue
                     annotation = ast.unparse(argument.annotation) if argument.annotation else ""
-                    rendered = f"\`{argument.arg}\`"
+                    rendered = f"**{argument.arg}**"
                     if annotation:
                         rendered += f" ({annotation})"
                     if default is not None:
-                        rendered += f" = \`{ast.unparse(default)}\`"
+                        rendered += f" = **{ast.unparse(default)}**"
                     args.append(rendered)
                 commands.append({
                     "name": name,
@@ -149,9 +149,9 @@ def render_commands(items: list[dict[str, str]]) -> str:
         lines.append("コマンド定義は検出されませんでした。")
     for item in items:
         lines.extend([
-            f"## \`/{item['name']}\`", "",
+            f"## **/{item['name']}**", "",
             item["description"] or "説明は未設定です。", "",
-            f"- 定義元: \`{item['module']}\`",
+            f"- 定義元: **{item['module']}**",
         ])
         if item["signature"]:
             lines.append(f"- 引数: {item['signature']}")
@@ -168,7 +168,7 @@ def render_environment(items: list[dict[str, str]]) -> str:
     for item in items:
         description = item["description"].replace("|", "\\|")
         default = item["default"].replace("|", "\\|")
-        lines.append(f"| \`{item['name']}\` | {default} | {description} |")
+        lines.append(f"| **{item['name']}** | {default} | {description} |")
     return "\n".join(lines) + "\n"
 
 
