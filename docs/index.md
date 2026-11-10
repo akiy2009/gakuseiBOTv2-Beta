@@ -1,6 +1,6 @@
 # gakuseiBOT v2 ドキュメント
 
-このドキュメントは、ローカル開発から本番運用までの手順と、HSS 時間割連携の実装をまとめたものです。
+このドキュメントは、ローカル開発から本番運用までの手順と、各機能の利用方法をまとめたものです。
 
 ```{toctree}
 :maxdepth: 2
@@ -11,6 +11,7 @@ getting-started
 configuration
 architecture
 operations
+reminders
 development
 gc/rule
 study/hss-integration
@@ -21,5 +22,6 @@ study/api-reference
 
 - [セットアップ](getting-started.md)
 - [設定一覧](configuration.md)
+- [リマインダー機能](reminders.md)
 - [HSS 時間割連携](study/hss-integration.md)
 - [テストとドキュメントのビルド](development.md)
