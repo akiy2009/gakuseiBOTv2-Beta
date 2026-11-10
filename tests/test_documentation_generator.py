@@ -15,9 +15,9 @@ def test_command_generation_documents_source() -> None:
         "name": "status",
         "description": "Show bot status",
         "module": "cogs/admin/status.py",
-        "signature": "\`verbose\` (bool) = \`False\`",
+        "signature": "**verbose** (bool) = **False**",
     }])
-    assert "\`/status\`" in rendered
+    assert "**/status**" in rendered
     assert "Show bot status" in rendered
     assert "cogs/admin/status.py" in rendered
 
@@ -35,13 +35,13 @@ def test_environment_generation_never_exposes_secret_values() -> None:
 
 def test_environment_parser_reads_example_and_python_sources(tmp_path: Path, monkeypatch) -> None:
     example = tmp_path / ".env.example"
-    example.write_text("# Bot token\\nDISCORD_TOKEN=placeholder\\nPREFIX=/\\n", encoding="utf-8")
+    example.write_text("# Bot token\nDISCORD_TOKEN=placeholder\nPREFIX=/\n", encoding="utf-8")
     monkeypatch.setattr(MODULE, "ENV_EXAMPLE", example)
     monkeypatch.setattr(MODULE, "ROOT", tmp_path)
     monkeypatch.setattr(MODULE, "COGS", tmp_path / "cogs")
     (tmp_path / "cogs").mkdir()
     (tmp_path / "main.py").write_text(
-        'import os\\nTOKEN = os.getenv("RUNTIME_ONLY_TOKEN", "")\\n',
+        'import os\nTOKEN = os.getenv("RUNTIME_ONLY_TOKEN", "")\n',
         encoding="utf-8",
     )
     items = {item["name"]: item for item in MODULE.collect_environment()}
