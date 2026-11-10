@@ -1,4 +1,5 @@
 """Runtime health checks with deduplicated administrator alerts."""
+
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +66,12 @@ def sqlite_check_sync(database_path: str) -> str:
 
 def safe_supabase_url(raw_url: str) -> str:
     parsed = urlsplit(raw_url.strip())
-    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+    ):
         raise ValueError("SUPABASE_URL must be a valid HTTPS project URL")
     if parsed.query or parsed.fragment:
         raise ValueError("SUPABASE_URL must not contain a query or fragment")
@@ -77,7 +83,9 @@ class HealthCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.interval = positive_int("HEALTH_CHECK_INTERVAL_SECONDS", DEFAULT_INTERVAL, 30)
+        self.interval = positive_int(
+            "HEALTH_CHECK_INTERVAL_SECONDS", DEFAULT_INTERVAL, 30
+        )
         self.failure_threshold = positive_int(
             "HEALTH_FAILURE_THRESHOLD", DEFAULT_FAILURE_THRESHOLD, 1
         )
@@ -101,9 +109,7 @@ class HealthCog(commands.Cog):
             return None
 
     async def cog_load(self) -> None:
-        self.session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=5)
-        )
+        self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5))
         if not self.monitor_loop.is_running():
             self.monitor_loop.change_interval(seconds=self.interval)
             self.monitor_loop.start()
@@ -128,7 +134,9 @@ class HealthCog(commands.Cog):
             detail = await asyncio.to_thread(sqlite_check_sync, path)
         except (OSError, sqlite3.Error, ValueError) as error:
             return CheckResult("SQLite", False, type(error).__name__)
-        return CheckResult("SQLite", True, detail, round((time.perf_counter() - started) * 1000))
+        return CheckResult(
+            "SQLite", True, detail, round((time.perf_counter() - started) * 1000)
+        )
 
     async def check_supabase(self) -> CheckResult:
         raw_url = os.getenv("SUPABASE_URL", "").strip()
@@ -151,16 +159,20 @@ class HealthCog(commands.Cog):
                 if response.status >= 400:
                     return CheckResult("Supabase", False, f"HTTP {response.status}")
                 await response.read()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as error:
+        except (TimeoutError, aiohttp.ClientError) as error:
             return CheckResult("Supabase", False, type(error).__name__)
         return CheckResult(
-            "Supabase", True, "Heartbeat table reachable",
+            "Supabase",
+            True,
+            "Heartbeat table reachable",
             round((time.perf_counter() - started) * 1000),
         )
 
     async def run_checks(self) -> list[CheckResult]:
         checks = await asyncio.gather(
-            self.check_gateway(), self.check_sqlite(), self.check_supabase(),
+            self.check_gateway(),
+            self.check_sqlite(),
+            self.check_supabase(),
             return_exceptions=True,
         )
         results: list[CheckResult] = []
@@ -173,7 +185,9 @@ class HealthCog(commands.Cog):
         self.last_results = results
         return results
 
-    async def notify_admins(self, title: str, description: str, recovered: bool = False) -> bool:
+    async def notify_admins(
+        self, title: str, description: str, recovered: bool = False
+    ) -> bool:
         color = discord.Color.green() if recovered else discord.Color.red()
         embed = discord.Embed(title=title, description=description[:4000], color=color)
         embed.timestamp = discord.utils.utcnow()
@@ -194,10 +208,16 @@ class HealthCog(commands.Cog):
         for user_id in sorted(self.admin_ids):
             try:
                 user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
-                await user.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+                await user.send(
+                    embed=embed, allowed_mentions=discord.AllowedMentions.none()
+                )
                 delivered = True
             except Exception:
-                logger.warning("Could not deliver health alert to administrator ID %s", user_id, exc_info=True)
+                logger.warning(
+                    "Could not deliver health alert to administrator ID %s",
+                    user_id,
+                    exc_info=True,
+                )
         if not delivered:
             logger.error(
                 "Health alert could not be delivered; configure HEALTH_ALERT_CHANNEL_ID "
@@ -223,7 +243,10 @@ class HealthCog(commands.Cog):
                     continue
                 failures = self.failure_counts.get(result.name, 0) + 1
                 self.failure_counts[result.name] = failures
-                if failures >= self.failure_threshold and result.name not in self.alerted:
+                if (
+                    failures >= self.failure_threshold
+                    and result.name not in self.alerted
+                ):
                     delivered = await self.notify_admins(
                         f"🚨 {result.name} health check failed",
                         f"**Component:** {result.name}\n"
@@ -240,7 +263,9 @@ class HealthCog(commands.Cog):
             await self.process_results(await self.run_checks())
         except Exception:
             # A notification or transient runtime error must not permanently stop monitoring.
-            logger.exception("Health monitoring cycle failed; the next cycle will retry.")
+            logger.exception(
+                "Health monitoring cycle failed; the next cycle will retry."
+            )
 
     @monitor_loop.before_loop
     async def before_monitor_loop(self) -> None:
@@ -250,7 +275,9 @@ class HealthCog(commands.Cog):
     async def monitor_loop_error(self, error: Exception) -> None:
         logger.error("Health monitor loop stopped unexpectedly", exc_info=error)
 
-    @app_commands.command(name="health", description="管理者向けにBotとDBの状態を確認します")
+    @app_commands.command(
+        name="health", description="管理者向けにBotとDBの状態を確認します"
+    )
     async def health(self, interaction: discord.Interaction) -> None:
         if interaction.user.id not in self.admin_ids:
             await interaction.response.send_message(
@@ -262,12 +289,16 @@ class HealthCog(commands.Cog):
         lines = []
         for result in results:
             marker = "🟢" if result.ok is True else "🔴" if result.ok is False else "⚪"
-            latency = f" · {result.latency_ms} ms" if result.latency_ms is not None else ""
+            latency = (
+                f" · {result.latency_ms} ms" if result.latency_ms is not None else ""
+            )
             lines.append(f"{marker} **{result.name}** — {result.detail}{latency}")
         embed = discord.Embed(
             title="システムヘルスチェック",
             description="\n".join(lines),
-            color=discord.Color.green() if all(r.ok is not False for r in results) else discord.Color.orange(),
+            color=discord.Color.green()
+            if all(r.ok is not False for r in results)
+            else discord.Color.orange(),
         )
         embed.set_footer(
             text=f"監視間隔: {self.interval} 秒 · 異常通知: {self.failure_threshold} 回連続"

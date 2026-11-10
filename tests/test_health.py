@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from cogs.normal.health import safe_supabase_url, sqlite_check_sync, parse_ids
+from cogs.normal.health import parse_ids, safe_supabase_url, sqlite_check_sync
 
 
 def test_parse_ids_ignores_invalid_and_duplicates():
@@ -10,7 +10,10 @@ def test_parse_ids_ignores_invalid_and_duplicates():
 
 
 def test_safe_supabase_url_requires_https():
-    assert safe_supabase_url("https://example.supabase.co/") == "https://example.supabase.co"
+    assert (
+        safe_supabase_url("https://example.supabase.co/")
+        == "https://example.supabase.co"
+    )
     with pytest.raises(ValueError):
         safe_supabase_url("http://example.supabase.co")
     with pytest.raises(ValueError):

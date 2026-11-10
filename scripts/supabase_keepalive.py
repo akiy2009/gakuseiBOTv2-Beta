@@ -4,6 +4,7 @@
 The upsert is idempotent and uses a dedicated table. Never print credentials or
 HTTP response bodies because provider error messages can contain sensitive data.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,9 @@ def validate_project_url(value: str) -> str:
     if parsed.scheme != "https" or not parsed.hostname:
         raise KeepaliveError("SUPABASE_URL must be a valid HTTPS project URL.")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise KeepaliveError("SUPABASE_URL must not contain credentials, query, or fragment.")
+        raise KeepaliveError(
+            "SUPABASE_URL must not contain credentials, query, or fragment."
+        )
     return value.strip().rstrip("/")
 
 
@@ -43,7 +46,11 @@ def request_json(
     api_key: str,
     payload: dict[str, Any] | None = None,
 ) -> Any:
-    body = None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    body = (
+        None
+        if payload is None
+        else json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    )
     headers = {
         "apikey": api_key,
         "Authorization": f"Bearer {api_key}",
@@ -68,7 +75,9 @@ def request_json(
                 raise KeepaliveError(f"Supabase returned HTTP {error.code}.") from None
         except (URLError, TimeoutError, OSError):
             if attempt == MAX_ATTEMPTS:
-                raise KeepaliveError("Supabase request failed after 3 attempts.") from None
+                raise KeepaliveError(
+                    "Supabase request failed after 3 attempts."
+                ) from None
         time.sleep(2 ** (attempt - 1))
 
     raise KeepaliveError("Supabase request failed.")
@@ -113,9 +122,14 @@ def run_keepalive(
     )
     rows = request_json(f"{endpoint}?{query}", "GET", api_key)
     if not isinstance(rows, list) or len(rows) != 1:
-        raise KeepaliveError("Heartbeat write completed, but read-back verification failed.")
+        raise KeepaliveError(
+            "Heartbeat write completed, but read-back verification failed."
+        )
     row = rows[0]
-    if row.get("key") != HEARTBEAT_KEY or row.get("workflow_run_id") != str(run_id)[:100]:
+    if (
+        row.get("key") != HEARTBEAT_KEY
+        or row.get("workflow_run_id") != str(run_id)[:100]
+    ):
         raise KeepaliveError("Heartbeat read-back did not match this workflow run.")
 
     return {

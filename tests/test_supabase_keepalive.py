@@ -11,7 +11,10 @@ from scripts.supabase_keepalive import (
 
 
 def test_project_url_requires_https_and_no_credentials():
-    assert validate_project_url("https://example.supabase.co/") == "https://example.supabase.co"
+    assert (
+        validate_project_url("https://example.supabase.co/")
+        == "https://example.supabase.co"
+    )
     for value in (
         "http://example.supabase.co",
         "https://user:pass@example.supabase.co",
@@ -29,11 +32,13 @@ def test_monday_run_writes_then_verifies(monkeypatch):
         calls.append((url, method, payload))
         if method == "POST":
             return None
-        return [{
-            "key": "github-actions",
-            "workflow_run_id": "12345",
-            "check_type": "monday_weekly",
-        }]
+        return [
+            {
+                "key": "github-actions",
+                "workflow_run_id": "12345",
+                "check_type": "monday_weekly",
+            }
+        ]
 
     monkeypatch.setattr("scripts.supabase_keepalive.request_json", fake_request)
     now = datetime(2026, 11, 9, 6, 0, tzinfo=ZoneInfo("Asia/Tokyo"))

@@ -24,9 +24,12 @@ def test_unknown_application_error_uses_generic_message():
 
 
 def test_prefix_command_not_found_is_silently_ignored():
-    assert ErrorHandler.get_prefix_error_message(
-        commands.CommandNotFound("!not-a-command")
-    ) is None
+    assert (
+        ErrorHandler.get_prefix_error_message(
+            commands.CommandNotFound("!not-a-command")
+        )
+        is None
+    )
 
 
 def test_prefix_missing_permissions_has_a_user_facing_message():

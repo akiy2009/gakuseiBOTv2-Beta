@@ -15,9 +15,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import TextIO
 
-
 _DEFAULT_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
-_STARTUP_BUFFER: "StartupBufferHandler | None" = None
+_STARTUP_BUFFER: StartupBufferHandler | None = None
 
 
 class StartupBufferHandler(logging.Handler):
