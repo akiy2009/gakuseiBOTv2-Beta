@@ -173,7 +173,7 @@ class HealthCog(commands.Cog):
         self.last_results = results
         return results
 
-    async def notify_admins(self, title: str, description: str, recovered: bool = False) -> None:
+    async def notify_admins(self, title: str, description: str, recovered: bool = False) -> bool:
         color = discord.Color.green() if recovered else discord.Color.red()
         embed = discord.Embed(title=title, description=description[:4000], color=color)
         embed.timestamp = discord.utils.utcnow()
@@ -203,6 +203,7 @@ class HealthCog(commands.Cog):
                 "Health alert could not be delivered; configure HEALTH_ALERT_CHANNEL_ID "
                 "or HEALTH_ADMIN_USER_IDS."
             )
+        return delivered
 
     async def process_results(self, results: list[CheckResult]) -> None:
         async with self.alert_lock:
@@ -222,14 +223,15 @@ class HealthCog(commands.Cog):
                 failures = self.failure_counts.get(result.name, 0) + 1
                 self.failure_counts[result.name] = failures
                 if failures >= self.failure_threshold and result.name not in self.alerted:
-                    self.alerted.add(result.name)
-                    await self.notify_admins(
+                    delivered = await self.notify_admins(
                         f"🚨 {result.name} health check failed",
                         f"**Component:** {result.name}\n"
                         f"**Consecutive failures:** {failures}\n"
                         f"**Reason:** {result.detail}\n"
                         "同じ障害の通知は復旧するまで抑制されます。",
                     )
+                    if delivered:
+                        self.alerted.add(result.name)
 
     @tasks.loop(seconds=DEFAULT_INTERVAL)
     async def monitor_loop(self) -> None:
