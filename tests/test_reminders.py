@@ -27,14 +27,15 @@ def test_reminder_persists_and_is_owner_scoped(tmp_path):
 def test_due_reminders_are_claimed_once_and_recovered_after_lease(tmp_path):
     store = make_store(tmp_path)
     now = datetime.now(timezone.utc)
-    reminder_id = store.add(10, "通知", now - timedelta(seconds=1))
+    reminder_id = store.add(10, "通知", now + timedelta(seconds=1))
+    due_now = now + timedelta(seconds=2)
 
-    claimed = store.claim_due(now=now)
+    claimed = store.claim_due(now=due_now)
     assert [row["id"] for row in claimed] == [reminder_id]
-    assert store.claim_due(now=now) == []
+    assert store.claim_due(now=due_now) == []
 
     # Simulate a process restart after the lease expires.
-    recovered = store.claim_due(now=now + timedelta(seconds=121))
+    recovered = store.claim_due(now=due_now + timedelta(seconds=121))
     assert [row["id"] for row in recovered] == [reminder_id]
 
 
