@@ -47,6 +47,7 @@ HSS API の実通信を行う場合は、管理者が発行した token と検�
 
 ```bash
 python -m pip install -r requirements-docs.txt
+python scripts/generate_docs.py
 sphinx-build -W --keep-going -b html docs build/manual-docs
 pdoc --output-dir build/api-docs cogs
 ```
@@ -54,8 +55,9 @@ pdoc --output-dir build/api-docs cogs
 - `docs/`: 運用・開発者向けの Markdown ドキュメント。
 - `build/manual-docs/`: Sphinx が生成する HTML マニュアル。
 - `build/api-docs/`: pdoc が生成する Cog の API リファレンス。
+- `docs/generated/`: Cog のコマンド定義と `.env.example` / Python ソースから抽出した自動生成リファレンス。
 
-生成物は Git にコミットせず、CI の Artifact として確認します。
+`docs/generated/` はビルド時に毎回再生成されます。コマンド名・説明は Cog のデコレーターや docstring を、環境変数は `.env.example` と `os.getenv` / `os.environ` の参照を情報源とします。秘密情報の実値は出力しません。生成済み HTML は CI の Artifact として確認します。
 
 ## CI / PR status
 
